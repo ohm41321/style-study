@@ -84,6 +84,11 @@ Tempo can land on half or double time for music with a weak pulse; trust it only
 hear. Instrumentation, harmony, melody shape and production habits (reverb, saturation, how hits are built)
 are traits. Never transcribe the reference's melody or harmony into the card: that is the pattern.
 
+Loudness, loudness range, peak to loudness and tempo are one number per file. Two references from one
+project (often mastered to the same level, at the same tempo) give the card a range of almost nothing on
+those, so the tolerance decides, and a cheerful pop track can pass while another score fails. Study three
+to five pieces that differ, and judge mood and instrumentation by ear.
+
 ## The generic route (any other medium)
 
 UI, slides, websites, 3D scenes, fashion, interiors, product photography sets, code style, packaging: there

@@ -40,6 +40,12 @@ lines. What is left is a **style card**. Your agent designs new work from the ca
 The test for a doubtful item: could a different subject do this without anyone thinking of one specific
 moment in the reference? Then it is style.
 
+```sh
+npx skills add ohm41321/style-study -g
+```
+
+<sub>Claude Code, Codex and other agents; a Claude Code plugin and manual setup are under [Install](#install).</sub>
+
 ## The loop
 
 <p align="center">
@@ -99,11 +105,12 @@ pace, a UI transition or a song's arrangement. See [`references/translate.md`](r
 dimensions in range and no core dimension off.
 
 **Pattern side.** Same order as the reference (a permutation test with the overall arc removed),
-near-duplicate frames or images (a difference hash plus a layout match), reused audio, shared runs of text
+near-duplicate frames or images (a difference hash plus a layout match), reused audio (excerpts and loops
+included), shared runs of text
 in the reference's own language, and any forbidden name. A palette that matches the reference is a
 warning: fine for a look, not for a brand.
 
-Both must pass. This is real output from the self-test's synthetic films: a new cut in its own order passes,
+Both must pass, and a check that could not run in full is never a pass. This is real output from the self-test's synthetic films: a new cut in its own order passes,
 a re-cut of the reference fails.
 
 <p align="center">
@@ -127,24 +134,44 @@ where it is weak: [`references/mediums.md`](references/mediums.md).
 
 ## Install
 
-Claude Code:
+One line installs it for Claude Code, Codex and the other agents the
+[skills CLI](https://github.com/vercel-labs/skills) supports. It needs Node.js and asks which agents to
+install to; `-g` makes it available in every project:
 
 ```sh
-git clone https://github.com/ohm41321/style-study.git ~/.claude/skills/style-study
+npx skills add ohm41321/style-study -g
 ```
 
-Any other agent that reads `SKILL.md` skills: put the folder where that agent loads skills. Then ask in
-plain words:
+Or as a **Claude Code plugin**:
+
+```sh
+claude plugin marketplace add ohm41321/style-study
+claude plugin install style-study@ohm41321
+```
+
+(the same two commands work inside Claude Code as `/plugin marketplace add …` and `/plugin install …`).
+
+Or **by hand**, into the folder your agent loads skills from:
+
+```sh
+git clone https://github.com/ohm41321/style-study.git ~/.claude/skills/style-study   # Claude Code
+git clone https://github.com/ohm41321/style-study.git ~/.agents/skills/style-study   # Codex
+```
+
+Writing needs nothing else: Python 3.9 or later is enough. Video, images and audio also need `ffmpeg` and
+numpy:
+
+```sh
+brew install ffmpeg            # macOS; on Debian or Ubuntu: sudo apt install ffmpeg
+python3 -m pip install numpy   # if pip refuses: python3 -m venv .venv && .venv/bin/pip install numpy
+```
+
+The agent knows the venv route too and sets it up itself when `python3` has no numpy. Then ask in plain
+words:
 
 > Study the style of these three films and design a 30-second launch film for my app in that style. Don't copy them.
 
 > This essay is in the style of my references. Is it too close to any of them?
-
-For video, images and audio you need `ffmpeg` and a Python with numpy. If `python3` has none:
-
-```sh
-python3 -m venv .venv && .venv/bin/pip install numpy
-```
 
 ## Self-test
 
@@ -152,10 +179,11 @@ python3 -m venv .venv && .venv/bin/pip install numpy
 python3 scripts/check-skill.py
 ```
 
-52 checks with known answers: a synthetic film with a known edit, click tracks with a known tempo and
-onsets, images whose empty space and subject offset move a known way, English and Thai texts, copies and
-same-order remakes that must fail, siblings that must pass, and a card for every lint rule that must be
-refused. Run it with a Python that has numpy to include the media routes.
+56 checks with known answers: a synthetic film with a known edit, click tracks with a known tempo and
+onsets, a track, an excerpt cut from its middle and an excerpt of a loop, images whose empty space and
+subject offset move a known way, English and Thai texts, copies and same-order remakes that must fail,
+siblings that must pass, and a card for every lint rule that must be refused. Run it with a Python that has
+numpy to include the media routes.
 
 ## Limits
 
@@ -173,6 +201,14 @@ refused. Run it with a Python that has numpy to include the media routes.
 [MIT](LICENSE). Use it, change it, ship work made with it.
 
 ## ภาษาไทย
+
+ติดตั้งบรรทัดเดียว ใช้ได้กับ Claude Code, Codex และ agent อื่น (ต้องมี Node.js):
+
+```sh
+npx skills add ohm41321/style-study -g
+```
+
+งานเขียนใช้ได้ทันที ส่วนวิดีโอ ภาพ และเสียง ต้องมี `ffmpeg` กับ numpy ด้วย (agent ติดตั้ง numpy ให้เองได้)
 
 <details>
 <summary>style-study คืออะไร และใช้ยังไง</summary>

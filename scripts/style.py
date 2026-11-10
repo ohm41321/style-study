@@ -147,14 +147,16 @@ def cmd_check(a):
     if medium == "text":
         import ss_text
         texts = [ss_text.clean_markdown(ss_text.read_text(f)) for f in a.files]
-    findings, warnings = [], []
+    findings, warnings, gaps = [], [], []
     for name, r, text in zip(names, ms["refs"], texts):
         p = ss_check.pattern_side(card, fps, medium, r["fp"], text, r["info"].get("lang"))
         tag = f"{name}: " if len(names) > 1 else ""
         findings += [tag + x for x in p["findings"]]
         warnings += [tag + x for x in p["warnings"]]
+        gaps += [tag + x for x in p["gaps"]]
     ran = bool(fps and fps["refs"])
-    pattern = {"ok": ran and not findings, "ran": ran, "findings": findings, "warnings": sorted(set(warnings))}
+    pattern = {"ok": ran and not findings and not gaps, "ran": ran, "findings": findings,
+               "warnings": sorted(set(warnings)), "gaps": sorted(set(gaps))}
     for line in ss_check.report_lines(style, pattern):
         print(line)
     ok = style["ok"] and pattern["ok"]

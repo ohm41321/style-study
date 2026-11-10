@@ -17,6 +17,7 @@ STILL = 0.5  # a shot whose median frame change is under this many grey levels c
 SR = 22050
 HOP = 256
 NFFT = 1024
+FP_HOP = 0.25  # seconds between the one-second windows of the audio copy fingerprint
 # An onset is found on the log-band flux, frame by frame, then placed inside its frame at the sample where
 # short-time energy rises most (REFINE windows of about 3 ms). The flux alone is biased by up to one window:
 # after silence it fires on the first frame that touches the attack. check-skill.py holds this to 12 ms
@@ -384,7 +385,6 @@ def measure_audio(path, max_seconds=600.0, want_onsets=False):
     per = int(round(fr))
     nwin = int(secs)
     level, cent, flat, ons = [], [], [], []
-    frames_out = []
     on = np.array(onsets)
     for w in range(nwin):
         sl = slice(w * per, (w + 1) * per)
@@ -394,7 +394,6 @@ def measure_audio(path, max_seconds=600.0, want_onsets=False):
         cent.append(float(np.median(a["centroid"][sl])) if pw > 1e-7 else None)
         flat.append(float(np.median(a["flatness"][sl])) if pw > 1e-7 else None)
         ons.append(int(((on >= w) & (on < w + 1)).sum()) if len(on) else 0)
-        frames_out.append(a["logb"][sl].mean(0) if a["logb"][sl].size else np.zeros(24))
     med = float(np.median(level)) if level else -120.0
     values = {
         "loudness": [lufs],
@@ -432,10 +431,17 @@ def measure_audio(path, max_seconds=600.0, want_onsets=False):
     values["width"] = [10 * math.log10(float((side ** 2).mean()) / (float((mid_sig ** 2).mean()) + 1e-20) + 1e-20)]
     values = {k: v for k, v in values.items() if v}
 
-    fmat = np.array(frames_out) if frames_out else np.zeros((0, 24))
-    if len(fmat):
-        fmat = fmat - fmat.mean(0)
-    fp = {"frames": [[round(float(v), 2) for v in row] for row in fmat], "levels": [round(l, 1) for l in level],
+    # copy fingerprint: one-second windows every FP_HOP seconds, each centred on its own mean across the bands.
+    # Nothing depends on the rest of the file, so a piece cut from anywhere in the track, off the second grid,
+    # louder or quieter, still lands on the reference's frames.
+    step = max(1, int(round(per * FP_HOP)))
+    fp_frames, fp_levels = [], []
+    for s0 in range(0, max(0, a["logb"].shape[0] - per + 1), step):
+        sl = slice(s0, s0 + per)
+        row = a["logb"][sl].mean(0)
+        fp_frames.append([round(float(v), 2) for v in row - row.mean()])
+        fp_levels.append(round(10 * math.log10(float(a["power"][sl].mean()) + 1e-12), 1))
+    fp = {"frames": fp_frames, "levels": fp_levels, "hop": FP_HOP,
           "seq": {"features": ["level", "log_centroid", "flatness", "onsets"],
                   "rows": [[level[i], math.log(cent[i]) if cent[i] else 0.0, flat[i] or 0.0, float(ons[i])] for i in range(nwin)],
                   "weights": [1.0] * nwin}}

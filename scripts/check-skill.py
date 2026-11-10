@@ -12,8 +12,9 @@
   video       cut times within one frame on a known edit; copy and same-order remake fail; sibling passes;
               a slow bright film fails the style side       (needs numpy and ffmpeg)
   audio       tempo within 1.5 BPM and onsets within 12 ms on click tracks (with and without a noise
-              floor); a copied track fails; a
-              reshuffled sibling passes                     (needs numpy and ffmpeg)
+              floor); a copied track, a re-encoded excerpt cut from mid-track and an excerpt of a
+              looped track fail; a reshuffled sibling passes; fingerprints from before the excerpt fix
+              leave the check incomplete, never passed  (needs numpy and ffmpeg)
   image       negative space and subject offset move the right way; copied images fail; a sibling set
               passes                                        (needs numpy and ffmpeg)
 
@@ -339,6 +340,19 @@ def check_contracts(tmp):
     check("check: a card passed as fingerprints is refused with exit 2", p.returncode == 2,
           f"exit {p.returncode}; {p.stderr.strip()[-120:]}")
 
+    # a report row must not look like a contradiction: a pass outside p10-p90 says it is inside the tolerance,
+    # and a negative range reads "-13.8 to -13.7", not "-13.8--13.7"
+    import ss_check
+    row = ss_check.compare_dim("loudness", {"p10": -13.8, "p50": -13.75, "p90": -13.7}, -14.2)
+    lines = ss_check.report_lines({"mode": "measured", "rows": [row], "share": 1.0, "ok": True},
+                                  {"ok": True, "findings": [], "warnings": []})
+    got = lines[1] if len(lines) > 1 else ""
+    edge = ss_check.compare_dim("loudness", {"p10": -13.8, "p50": -13.75, "p90": -13.7}, -13.80004)
+    same = ss_check.report_lines({"mode": "measured", "rows": [edge], "share": 1.0, "ok": True},
+                                 {"ok": True, "findings": [], "warnings": []})[1]
+    check("check: a row passed by the tolerance says so", row["ok"] and "within the tolerance" in got
+          and "-13.8 to -13.7" in got and "tolerance" not in same, got.strip() + " | " + same.strip())
+
     # two drafts with one file name: the copy (its paragraphs reshuffled, so only the text test can see it)
     # must not hide behind the clean one
     paras = open(copy, encoding="utf-8").read().split("\n\n")
@@ -531,6 +545,40 @@ def check_audio(np, tmp):
     cli("card", os.path.join(tmp, "m-audio.json"), "-o", os.path.join(tmp, "audio.json"),
         "--fingerprints", os.path.join(tmp, "audio-fp.json"))
     run_pair(tmp, "audio", copy, None, sib, far)
+    # a piece cut from mid-track, off the one-second grid, and re-encoded: the usual way music is lifted
+    excerpt = os.path.join(tmp, "aexcerpt.m4a")
+    p = subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", "7.4", "-t", "20", "-i", ref, "-c:a", "aac", "-b:a", "128k",
+                        excerpt], capture_output=True, text=True)
+    if p.returncode:
+        raise RuntimeError(f"ffmpeg could not cut the excerpt: {p.stderr.strip()[-300:]}")
+    p = cli("check", excerpt, "--card", os.path.join(tmp, "audio.json"), "--fingerprints", os.path.join(tmp, "audio-fp.json"))
+    check("audio check: a re-encoded 20 s excerpt from mid-track fails the pattern side", "PATTERN FAIL" in p.stdout,
+          last_copy_line(p.stdout))
+    # a loop: every bar repeats, so each second of an excerpt matches several places in the reference
+    bar = sections_audio(np, [("tone", 1, 220), ("pulses", 1, 150), ("tone", 1, 330), ("noise", 1, 8)], 7)
+    intro = sections_audio(np, [("noise", 4, 0)], 8)
+    loop, loopx = os.path.join(tmp, "aloop.wav"), os.path.join(tmp, "aloopx.m4a")
+    write_wav(np, loop, np.concatenate([intro] + [bar] * 8))
+    p = subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", "9.13", "-t", "20", "-i", loop, "-c:a", "aac", "-b:a", "128k",
+                        loopx], capture_output=True, text=True)
+    if p.returncode:
+        raise RuntimeError(f"ffmpeg could not cut the loop excerpt: {p.stderr.strip()[-300:]}")
+    cli("measure", loop, "-o", os.path.join(tmp, "m-loop.json"))
+    cli("card", os.path.join(tmp, "m-loop.json"), "-o", os.path.join(tmp, "loop.json"),
+        "--fingerprints", os.path.join(tmp, "loop-fp.json"))
+    p = cli("check", loopx, "--card", os.path.join(tmp, "loop.json"), "--fingerprints", os.path.join(tmp, "loop-fp.json"))
+    check("audio check: an excerpt of a looped track is caught as reused audio", "of audio match" in p.stdout,
+          last_copy_line(p.stdout))
+    # fingerprints written before the quarter-second frames cannot be compared: the check must not pass
+    fps = json.load(open(os.path.join(tmp, "audio-fp.json"), encoding="utf-8"))
+    for r in fps["refs"]:
+        r["fp"].pop("hop", None)
+    stale = os.path.join(tmp, "audio-fp-old.json")
+    json.dump(fps, open(stale, "w", encoding="utf-8"))
+    p = cli("check", sib, "--card", os.path.join(tmp, "audio.json"), "--fingerprints", stale)
+    check("audio check: old fingerprints fail the check and say reused audio was not checked",
+          p.returncode == 1 and "older style-study" in p.stdout and "PATTERN PASS" not in p.stdout,
+          next((l.strip() for l in p.stdout.splitlines() if l.startswith("PATTERN")), p.stdout.strip().splitlines()[-1]))
     return os.path.join(tmp, "audio.json")
 
 

@@ -6,7 +6,10 @@ python3 scripts/style.py check NEW... --card style.json --fingerprints fingerpri
 
 New work passes only when both sides pass: the style is close enough to the card, and the pattern is far
 enough from every reference. Without `--fingerprints` the pattern side cannot run: the report says
-`PATTERN NOT RUN` and the exit code is 1, because unchecked is not passed. A file that is not a
+`PATTERN NOT RUN` and the exit code is 1, because unchecked is not passed. For the same reason, when part of
+the pattern side cannot run, such as audio against fingerprints written by an older style-study, the report
+says `PATTERN INCOMPLETE`, names what was `NOT CHECKED`, and exits 1; run `style.py card` again to rebuild the
+fingerprints. A file that is not a
 fingerprints file (a card passed by mistake) exits 2. Exit code 0 means both sides ran and passed.
 
 With several new files, each is checked against the references on its own, and a finding names the file.
@@ -24,8 +27,10 @@ Core dimensions: shot length, cuts per minute, movement (video); onsets per seco
 
 English and Thai text are compared only on the dimensions both languages share.
 
-Reading a row: `OFF Shot length [core]: 0.9 against 1.4-5.8 s (too low)`. The fix is in the work, not the
-card: longer holds, fewer cuts. Widening the card to make a draft pass defeats the check.
+Reading a row: `OFF Shot length [core]: 0.9 against 1.4 to 5.8 s (too low)`. The fix is in the work, not the
+card: longer holds, fewer cuts. Widening the card to make a draft pass defeats the check. Each dimension
+has a small tolerance past p10 and p90 (its `tol`, or a tenth of the range); a value there passes and the
+row says `(just outside, within the tolerance)`.
 
 **Another medium (translated mode).** When the card has no measurements for the new work's medium, the
 check measures the new work, derives its axis bands, and compares bands: every shared axis within one band
@@ -39,7 +44,7 @@ Run against every reference in `fingerprints.json`.
 |---|---|---|
 | order | the new work's sequence correlates with the reference's at r 0.5 or more, and fewer than 2% of 300 shuffles of the new work do as well (p 0.02 or less) | following the reference's structure, even with all-new material |
 | frames and images | a frame or image whose dHash is close (12 bits) and whose 16x16 grey layout correlates at 0.9 or more with a reference frame. Video: 20% of shots and at least 2. Images: any one | reused footage, traced or recoloured images, the same composition |
-| audio | 8 or more consecutive seconds whose 24-band profile (against the file's own average) matches consecutive reference seconds at cosine 0.97, at any offset; silent seconds ignored | reused recordings or stems |
+| audio | 8 or more consecutive seconds whose 24-band profile (each one-second window against its own average, less the reference's average profile so the tilt all music shares does not count) matches reference windows in step, at cosine 0.92; the reference is fingerprinted every quarter second, so an excerpt cut from anywhere, off the second grid and re-encoded, still lines up; every matching window counts, not only the closest, so loops and repeated choruses keep the run going; silent seconds ignored | reused recordings, stems, excerpts and loops |
 | text | a shared run of 12 English words or 40 Thai characters, or 5% of the new text's 8-word (15-character) shingles found in the reference; run in the reference's language, so Thai pasted into English text is still found | copied sentences |
 | names | a `forbid` name in new text | the reference's brand or characters |
 | palette (warning) | every chromatic colour of the new work within delta E 6 of one of the reference's, and the reference's within 6 of the new work's on average | same colour set: fine for a look, not for a brand |

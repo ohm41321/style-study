@@ -1,0 +1,22 @@
+{
+  "name": "style-study",
+  "version": "1.1.0",
+  "description": "Learn the style of reference works (video, images, music, Thai and English writing) and design new work in it, with a two-sided check that proves it is not a copy.",
+  "icon": "./.claude-plugin/icon.jpg",
+  "author": {
+    "name": "ohm41321",
+    "url": "https://github.com/ohm41321"
+  },
+  "homepage": "https://github.com/ohm41321/style-study",
+  "repository": "https://github.com/ohm41321/style-study",
+  "license": "MIT",
+  "keywords": [
+    "style",
+    "design",
+    "video",
+    "music",
+    "writing",
+    "thai",
+    "copy-check"
+  ]
+}

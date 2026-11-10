@@ -1,0 +1,15 @@
+{
+  "name": "ohm41321",
+  "description": "Agent skills by ohm41321",
+  "owner": {
+    "name": "ohm41321",
+    "url": "https://github.com/ohm41321"
+  },
+  "plugins": [
+    {
+      "name": "style-study",
+      "source": "./",
+      "description": "Learn the style of reference works (video, images, music, Thai and English writing) and design new work in it, with a two-sided check that proves it is not a copy."
+    }
+  ]
+}

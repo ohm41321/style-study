@@ -359,9 +359,9 @@ def check():
 TERM = [
     ("$ ", "python3 scripts/style.py check new-cut.mp4 --card style.json --fingerprints fingerprints.json", "cmd"),
     ("", "STYLE PASS: 100% of dimensions in range", "pass"),
-    ("", "  ok  Shot length [core]: 1.3 against 0.6-2.8 s", "ok"),
-    ("", "  ok  Movement inside a shot [core]: 0.824 against 0.01-3.35 frame change", "ok"),
-    ("", "  ok  Brightness: 0.445 against 0.3-0.623 0-1", "ok"),
+    ("", "  ok  Shot length [core]: 1.3 against 0.6 to 2.8 s", "ok"),
+    ("", "  ok  Movement inside a shot [core]: 0.824 against 0.01 to 3.35 frame change", "ok"),
+    ("", "  ok  Brightness: 0.445 against 0.3 to 0.623 0-1", "ok"),
     ("", "  ...  7 more dimensions in range", "dim"),
     ("", "PATTERN PASS: nothing taken from the reference's order or material", "pass"),
     ("", "check: PASS", "pass"),

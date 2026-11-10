@@ -31,7 +31,7 @@ THUMB_R = 0.9  # ...and is a near-duplicate only if the grey layouts also correl
 TEXT_SPAN = {"en": 12, "th": 40}  # words / characters of shared run that count as copied
 TEXT_SHARE = 0.05
 AUDIO_RUN = 8  # seconds of matching consecutive audio
-AUDIO_COS = 0.97
+AUDIO_COS = 0.92  # on band profiles with the reference's average profile taken out
 PALETTE_DE = 6.0
 
 
@@ -168,36 +168,59 @@ def palette_match(ref_pal, new_pal):
 
 
 def audio_reuse(ref_fp, new_fp):
-    """Longest run of consecutive new seconds whose best match is consecutive reference seconds."""
-    rf = [(row, lv) for row, lv in zip(ref_fp.get("frames", []), ref_fp.get("levels", []))]
-    nf = [(row, lv) for row, lv in zip(new_fp.get("frames", []), new_fp.get("levels", []))]
-    if not rf or not nf:
+    """Longest stretch of new audio whose seconds match the reference's frames in step.
+
+    Frames are one-second windows every `hop` seconds. The reference's average band profile is taken out of both
+    sides, so the spectral tilt all music shares does not count as a match. Every reference frame a new second
+    matches is kept, not only the closest, so a loop or a repeated chorus cannot break the run: a run goes on
+    while some matching frame lies about one second (1/hop frames, give or take one) after the previous one.
+    """
+    hop = ref_fp.get("hop")
+    if hop is None or new_fp.get("hop") != hop:
+        return {"run": 0, "alarm": False, "stale": True}
+    k = max(1, round(1 / hop))
+    loud = [(row, lv > -50) for row, lv in zip(ref_fp.get("frames", []), ref_fp.get("levels", []))]
+    rows = [row for row, ok in loud if ok]
+    if not rows:
         return {"run": 0, "alarm": False}
+    avg = [sum(c) / len(rows) for c in zip(*rows)]
+    ref = [_unit([x - m for x, m in zip(row, avg)]) if ok else None for row, ok in loud]
+    new = [_unit([x - m for x, m in zip(row, avg)]) if lv > -50 else None
+           for row, lv in list(zip(new_fp.get("frames", []), new_fp.get("levels", [])))[::k]]
+    longest, prev = 0, {}
+    for hits in _matches(ref, new):
+        cur = {j: 1 + max(prev.get(j - k - 1, 0), prev.get(j - k, 0), prev.get(j - k + 1, 0)) for j in hits}
+        longest = max([longest, *cur.values()])
+        prev = cur
+    return {"run": longest, "alarm": longest >= AUDIO_RUN}
 
-    def unit(v):
-        n = math.sqrt(sum(x * x for x in v))
-        return [x / n for x in v] if n > 1e-9 else None
 
-    ru = [unit(r) if lv > -50 else None for r, lv in rf]
-    best = []
-    for row, lv in nf:
-        u = unit(row) if lv > -50 else None
+def _unit(v):
+    n = math.sqrt(sum(x * x for x in v))
+    return [x / n for x in v] if n > 1e-9 else None
+
+
+def _matches(ref_units, new_units):
+    """For each new unit vector, the indices of every reference unit vector at cosine AUDIO_COS or more."""
+    idx = [j for j, u in enumerate(ref_units) if u is not None]
+    try:
+        import numpy as np
+    except ImportError:
+        np = None
+    if np is not None and idx:
+        R = np.array([ref_units[j] for j in idx])
+        return [[] if u is None else [idx[b] for b in np.nonzero(R @ np.array(u) >= AUDIO_COS)[0]] for u in new_units]
+    return [[] if u is None else [j for j in idx if sum(x * y for x, y in zip(u, ref_units[j])) >= AUDIO_COS]
+            for u in new_units]
+    out = []
+    for u in new_units:
         if u is None:
-            best.append(None)
+            out.append(None)
             continue
         bj, bc = None, -1.0
-        for j, r in enumerate(ru):
-            if r is None:
-                continue
+        for j, r in enumerate(ref_units):
             c = sum(x * y for x, y in zip(u, r))
             if c > bc:
                 bj, bc = j, c
-        best.append(bj if bc >= AUDIO_COS else None)
-    longest, run = 0, 0
-    for i, j in enumerate(best):
-        if j is not None and i > 0 and best[i - 1] is not None and j == best[i - 1] + 1:
-            run += 1
-        else:
-            run = 1 if j is not None else 0
-        longest = max(longest, run)
-    return {"run": longest, "alarm": longest >= AUDIO_RUN}
+        out.append(bj if bc >= AUDIO_COS else None)
+    return out
