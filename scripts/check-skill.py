@@ -17,8 +17,18 @@
               leave the check incomplete, never passed  (needs numpy and ffmpeg)
   image       negative space and subject offset move the right way; copied images fail; a sibling set
               passes                                        (needs numpy and ffmpeg)
+  documents   known answers from .pptx, .docx, .xlsx, .odt, .odp, .fods, .epub, .rtf (Thai code page) and
+              .csv written here: sizes through master, layout and style inheritance, theme colours,
+              spacing, margins, numbers, decimals, charts; oversized parts and DTDs refused; macOS textutil
+              round trips; PDF as a document and as a deck, including text inside scaled form XObjects
+              (needs pypdf or pdftotext). Copy, same-order rewrite and reshuffled sibling for slides,
+              documents and sheets; a same-order rewrite saved in another written format; hidden slides and
+              sheets still checked; a shared month header is not a copy; parts counted once toward the size
+              limit; a UTF-16 DTD refused; a reference picture re-saved inside a new deck is caught by its
+              look with numpy and ffmpeg, by its bytes without them
 
-Run with a Python that has numpy for the media checks; without it they print SKIP. Exit 1 on any failure.
+Run with a Python that has numpy and pypdf for the media and PDF checks; without them they print SKIP. Exit 1
+on any failure.
 Usage: check-skill.py [--keep DIR]
 """
 
@@ -31,8 +41,11 @@ import re
 import shutil
 import subprocess
 import sys
+import struct
 import tempfile
 import wave
+import zipfile
+import zlib
 
 sys.dont_write_bytecode = True
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -645,6 +658,874 @@ def check_image(np, tmp):
     return os.path.join(tmp, "image.json")
 
 
+# ---------------------------------------------------------------- documents: fixture writers
+XA = 'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"'
+XP = 'xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"'
+XR = 'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"'
+XW = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
+XS = 'xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"'
+RT = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/"
+HEAD = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+
+
+def esc(t):
+    return t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def png(seed, w=48, h=36, level=6):
+    """A small PNG of coloured rectangles, written without numpy; `level` changes the bytes, not the picture."""
+    rng = random.Random(seed)
+    base = [rng.randrange(256) for _ in range(3)]
+    rects = [(rng.randrange(w), rng.randrange(h), rng.randrange(6, 24), rng.randrange(5, 18),
+              [rng.randrange(256) for _ in range(3)]) for _ in range(6)]
+    rows = []
+    for y in range(h):
+        row = bytearray(b"\x00")
+        for x in range(w):
+            c = base
+            for rx, ry, rw, rh, col in rects:
+                if rx <= x < rx + rw and ry <= y < ry + rh:
+                    c = col
+            row += bytes(c)
+        rows.append(bytes(row))
+
+    def chunk(t, d):
+        return struct.pack(">I", len(d)) + t + d + struct.pack(">I", zlib.crc32(t + d) & 0xFFFFFFFF)
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(b"".join(rows), level)) + chunk(b"IEND", b""))
+
+
+def rels_xml(items):
+    return (HEAD + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            + "".join(f'<Relationship Id="{i}" Type="{RT}{t}" Target="{g}"/>' for i, t, g in items) + "</Relationships>")
+
+
+def write_zip(path, parts, mimetype=None):
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
+        if mimetype:
+            z.writestr(zipfile.ZipInfo("mimetype"), mimetype)  # stored, first: ODF and EPUB want it so
+        for name, data in parts.items():
+            z.writestr(name, data)
+
+
+def types_xml(main):
+    return (HEAD + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+            '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+            '<Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/>'
+            f'<Override PartName="/{main[0]}" ContentType="{main[1]}"/></Types>')
+
+
+def theme_xml(major, minor, accents):
+    acc = "".join(f'<a:accent{i + 1}><a:srgbClr val="{c}"/></a:accent{i + 1}>' for i, c in enumerate(accents))
+    return (HEAD + f'<a:theme {XA} name="T"><a:themeElements><a:clrScheme name="C">'
+            '<a:dk1><a:sysClr val="windowText" lastClr="000000"/></a:dk1><a:lt1><a:sysClr val="window" lastClr="FFFFFF"/></a:lt1>'
+            '<a:dk2><a:srgbClr val="1F2A44"/></a:dk2><a:lt2><a:srgbClr val="E7E6E6"/></a:lt2>' + acc +
+            '<a:hlink><a:srgbClr val="0563C1"/></a:hlink><a:folHlink><a:srgbClr val="954F72"/></a:folHlink></a:clrScheme>'
+            f'<a:fontScheme name="F"><a:majorFont><a:latin typeface="{major}"/><a:ea typeface=""/><a:cs typeface=""/></a:majorFont>'
+            f'<a:minorFont><a:latin typeface="{minor}"/><a:ea typeface=""/><a:cs typeface=""/></a:minorFont></a:fontScheme>'
+            '<a:fmtScheme name="M"/></a:themeElements></a:theme>')
+
+
+GRP = '<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/>'
+
+
+def xfrm(x, y, w, h):
+    return f'<a:xfrm><a:off x="{int(x)}" y="{int(y)}"/><a:ext cx="{int(w)}" cy="{int(h)}"/></a:xfrm>'
+
+
+def ph_sp(i, ph, paras, box=None, body_pr=""):
+    return (f'<p:sp><p:nvSpPr><p:cNvPr id="{i}" name="Shape {i}"/><p:cNvSpPr/><p:nvPr>{ph}</p:nvPr></p:nvSpPr>'
+            f'<p:spPr>{xfrm(*box) if box else ""}</p:spPr><p:txBody><a:bodyPr>{body_pr}</a:bodyPr><a:lstStyle/>{paras}</p:txBody></p:sp>')
+
+
+def para_xml(text, rpr="", ppr=""):
+    return f'<a:p>{ppr}<a:r><a:rPr lang="en-US"{rpr}<a:t>{esc(text)}</a:t></a:r></a:p>'
+
+
+def write_pptx(path, slides, size=(12192000, 6858000), sizes=(4400, 2800), fonts=("Aptos Display", "Aptos"),
+               accents=("2E7D32", "F57C00", "1565C0", "AD1457", "6A1B9A", "00838F")):
+    """slides: dicts with title, bullets, title_sz, body_rpr, body_pr, bg (hex), full_rect (scheme colour),
+    pictures (bytes), body_box (x, y, w, h fractions), hidden, plain (paragraphs with buNone)."""
+    W, H = size
+    tbox = (0.07 * W, 0.05 * H, 0.86 * W, 0.19 * H)
+    bbox = (0.07 * W, 0.27 * H, 0.86 * W, 0.63 * H)
+    master = (HEAD + f'<p:sldMaster {XA} {XP} {XR}><p:cSld><p:bg><p:bgRef idx="1001"><a:schemeClr val="bg1"/></p:bgRef></p:bg>'
+              f'<p:spTree>{GRP}' + ph_sp(2, '<p:ph type="title"/>', para_xml("Master title", "/>"), tbox)
+              + ph_sp(3, '<p:ph type="body" idx="1"/>', para_xml("Master text", "/>"), bbox) + '</p:spTree></p:cSld>'
+              '<p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" '
+              'accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>'
+              '<p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst><p:txStyles>'
+              f'<p:titleStyle><a:lvl1pPr><a:defRPr sz="{sizes[0]}"><a:solidFill><a:schemeClr val="tx1"/></a:solidFill>'
+              '<a:latin typeface="+mj-lt"/></a:defRPr></a:lvl1pPr></p:titleStyle>'
+              f'<p:bodyStyle><a:lvl1pPr marL="228600" indent="-228600"><a:buChar char="&#8226;"/><a:defRPr sz="{sizes[1]}">'
+              '<a:solidFill><a:schemeClr val="tx1"/></a:solidFill><a:latin typeface="+mn-lt"/></a:defRPr></a:lvl1pPr>'
+              '</p:bodyStyle><p:otherStyle><a:lvl1pPr><a:defRPr sz="1800"/></a:lvl1pPr></p:otherStyle></p:txStyles></p:sldMaster>')
+    layout = (HEAD + f'<p:sldLayout {XA} {XP} {XR}><p:cSld name="Title and Content"><p:spTree>{GRP}'
+              + ph_sp(2, '<p:ph type="title"/>', "<a:p/>") + ph_sp(3, '<p:ph idx="1"/>', "<a:p/>")
+              + '</p:spTree></p:cSld></p:sldLayout>')
+    parts = {"[Content_Types].xml": types_xml(("ppt/presentation.xml", "application/vnd.openxmlformats-officedocument."
+                                                "presentationml.presentation.main+xml")),
+             "_rels/.rels": rels_xml([("rId1", "officeDocument", "ppt/presentation.xml")]),
+             "ppt/slideMasters/slideMaster1.xml": master,
+             "ppt/slideMasters/_rels/slideMaster1.xml.rels": rels_xml([("rId1", "slideLayout", "../slideLayouts/slideLayout1.xml"),
+                                                                       ("rId2", "theme", "../theme/theme1.xml")]),
+             "ppt/slideLayouts/slideLayout1.xml": layout,
+             "ppt/slideLayouts/_rels/slideLayout1.xml.rels": rels_xml([("rId1", "slideMaster", "../slideMasters/slideMaster1.xml")]),
+             "ppt/theme/theme1.xml": theme_xml(fonts[0], fonts[1], accents)}
+    pres_rels = [("rIdM", "slideMaster", "slideMasters/slideMaster1.xml")]
+    ids = []
+    pic_n = 0
+    for k, s in enumerate(slides, 1):
+        shapes, rels = [], [("rId1", "slideLayout", "../slideLayouts/slideLayout1.xml")]
+        if s.get("full_rect"):
+            shapes.append(f'<p:sp><p:nvSpPr><p:cNvPr id="9" name="Back"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr>{xfrm(0, 0, W, H)}'
+                          f'<a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:solidFill><a:schemeClr val="{s["full_rect"]}"/>'
+                          '</a:solidFill></p:spPr></p:sp>')
+        if s.get("title"):
+            sz = f' sz="{s["title_sz"]}"' if s.get("title_sz") else ""
+            shapes.append(ph_sp(2, '<p:ph type="title"/>', para_xml(s["title"], sz + "/>")))
+        paras = "".join(para_xml(b, s.get("body_rpr", "/>")) for b in s.get("bullets", []))
+        paras += "".join(para_xml(b, s.get("body_rpr", "/>"), '<a:pPr><a:buNone/></a:pPr>') for b in s.get("plain", []))
+        if paras:
+            box = tuple(f * d for f, d in zip(s["body_box"], (W, H, W, H))) if s.get("body_box") else None
+            shapes.append(ph_sp(3, '<p:ph idx="1"/>', paras, box, s.get("body_pr", "")))
+        for j, data in enumerate(s.get("pictures", [])):
+            pic_n += 1
+            name = f"image{pic_n}.png"
+            parts[f"ppt/media/{name}"] = data
+            rels.append((f"rIdP{j}", "image", f"../media/{name}"))
+            shapes.append(f'<p:pic><p:nvPicPr><p:cNvPr id="{20 + j}" name="Picture {j}"/><p:cNvPicPr/><p:nvPr/></p:nvPicPr>'
+                          f'<p:blipFill><a:blip r:embed="rIdP{j}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>'
+                          f'<p:spPr>{xfrm(0.62 * W, 0.3 * H + j * 0.1 * H, 0.3 * W, 0.4 * H)}<a:prstGeom prst="rect"><a:avLst/>'
+                          '</a:prstGeom></p:spPr></p:pic>')
+        bg = (f'<p:bg><p:bgPr><a:solidFill><a:srgbClr val="{s["bg"]}"/></a:solidFill><a:effectLst/></p:bgPr></p:bg>'
+              if s.get("bg") else "")
+        show = ' show="0"' if s.get("hidden") else ""
+        parts[f"ppt/slides/slide{k}.xml"] = (HEAD + f'<p:sld {XA} {XP} {XR}{show}><p:cSld>{bg}<p:spTree>{GRP}{"".join(shapes)}'
+                                             '</p:spTree></p:cSld></p:sld>')
+        parts[f"ppt/slides/_rels/slide{k}.xml.rels"] = rels_xml(rels)
+        pres_rels.append((f"rId{k}", "slide", f"slides/slide{k}.xml"))
+        ids.append(f'<p:sldId id="{255 + k}" r:id="rId{k}"/>')
+    parts["ppt/presentation.xml"] = (HEAD + f'<p:presentation {XA} {XP} {XR}><p:sldMasterIdLst><p:sldMasterId id="2147483648" '
+                                     f'r:id="rIdM"/></p:sldMasterIdLst><p:sldIdLst>{"".join(ids)}</p:sldIdLst>'
+                                     f'<p:sldSz cx="{W}" cy="{H}"/><p:notesSz cx="6858000" cy="9144000"/></p:presentation>')
+    parts["ppt/_rels/presentation.xml.rels"] = rels_xml(pres_rels)
+    write_zip(path, parts)
+
+
+def write_docx(path, blocks, body_half=22, heading_half=36, line=276, after=160, margin=1440, font="Georgia", pictures=()):
+    """blocks: ("h", text), ("p", [(text, bold)], {jc, after}), ("li", text), ("table", [[cell]]), ("pic", index)."""
+    body, rels = [], [("rIdS", "styles", "styles.xml")]
+    parts = {}
+    for b in blocks:
+        if b[0] == "h":
+            body.append(f'<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>{esc(b[1])}</w:t></w:r></w:p>')
+        elif b[0] == "p":
+            opts = b[2] if len(b) > 2 else {}
+            ppr = (f'<w:jc w:val="{opts["jc"]}"/>' if opts.get("jc") else "") + (
+                f'<w:spacing w:after="{opts["after"]}"/>' if "after" in opts else "")
+            runs = "".join(f'<w:r>{"<w:rPr><w:b/></w:rPr>" if bold else ""}<w:t xml:space="preserve">{esc(t)}</w:t></w:r>'
+                           for t, bold in b[1])
+            body.append(f'<w:p>{"<w:pPr>" + ppr + "</w:pPr>" if ppr else ""}{runs}</w:p>')
+        elif b[0] == "li":
+            body.append('<w:p><w:pPr><w:pStyle w:val="ListParagraph"/><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/>'
+                        f'</w:numPr></w:pPr><w:r><w:t>{esc(b[1])}</w:t></w:r></w:p>')
+        elif b[0] == "table":
+            rows = "".join("<w:tr>" + "".join(f'<w:tc><w:p><w:r><w:t>{esc(c)}</w:t></w:r></w:p></w:tc>' for c in row) + "</w:tr>"
+                           for row in b[1])
+            body.append(f"<w:tbl>{rows}</w:tbl>")
+        elif b[0] == "pic":
+            rid = f"rIdP{b[1]}"
+            parts[f"word/media/image{b[1]}.png"] = pictures[b[1]]
+            rels.append((rid, "image", f"media/image{b[1]}.png"))
+            body.append('<w:p><w:r><w:drawing><wp:inline xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/'
+                        'wordprocessingDrawing"><wp:extent cx="1828800" cy="1371600"/><wp:docPr id="1" name="Picture"/>'
+                        f'<a:graphic {XA}><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">'
+                        '<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr>'
+                        '<pic:cNvPr id="1" name="p.png"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill>'
+                        f'<a:blip r:embed="{rid}"/></pic:blipFill><pic:spPr/></pic:pic></a:graphicData></a:graphic>'
+                        '</wp:inline></w:drawing></w:r></w:p>')
+    body.append(f'<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="{margin}" w:bottom="1440" '
+                f'w:left="{margin}"/></w:sectPr>')
+    styles = (HEAD + f'<w:styles {XW}><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="{font}" w:hAnsi="{font}"/>'
+              f'<w:sz w:val="{body_half}"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="{after}" '
+              f'w:line="{line}" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults>'
+              '<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style>'
+              '<w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/>'
+              f'<w:pPr><w:spacing w:after="240"/><w:outlineLvl w:val="0"/></w:pPr><w:rPr><w:b/><w:sz w:val="{heading_half}"/>'
+              '</w:rPr></w:style><w:style w:type="paragraph" w:styleId="ListParagraph"><w:name w:val="List Paragraph"/>'
+              '<w:basedOn w:val="Normal"/></w:style></w:styles>')
+    parts.update({"[Content_Types].xml": types_xml(("word/document.xml", "application/vnd.openxmlformats-officedocument."
+                                                     "wordprocessingml.document.main+xml")),
+                  "_rels/.rels": rels_xml([("rId1", "officeDocument", "word/document.xml")]),
+                  "word/document.xml": HEAD + f'<w:document {XW} {XR}><w:body>{"".join(body)}</w:body></w:document>',
+                  "word/styles.xml": styles, "word/_rels/document.xml.rels": rels_xml(rels)})
+    write_zip(path, parts)
+
+
+def col_name(i):
+    s = ""
+    while i:
+        i, r = divmod(i - 1, 26)
+        s = chr(65 + r) + s
+    return s
+
+
+def write_xlsx(path, sheets, bold_header=True, font="Calibri"):
+    """sheets: dicts with name, rows (cells: str, number, ("=", formula, value) or ("3dp", number)), merged, hidden, chart."""
+    strings, index = [], {}
+    parts = {}
+    wb_rels, entries = [("rIdS", "styles", "styles.xml"), ("rIdT", "sharedStrings", "sharedStrings.xml")], []
+    for k, sh in enumerate(sheets, 1):
+        rows_xml = []
+        for r, row in enumerate(sh["rows"], 1):
+            cells = []
+            for c, v in enumerate(row, 1):
+                ref = f"{col_name(c)}{r}"
+                if v is None:
+                    continue
+                if isinstance(v, str):
+                    if v not in index:
+                        index[v] = len(strings)
+                        strings.append(v)
+                    style = ' s="1"' if r == 1 and bold_header else ""
+                    cells.append(f'<c r="{ref}" t="s"{style}><v>{index[v]}</v></c>')
+                elif isinstance(v, tuple) and v[0] == "=":
+                    cells.append(f'<c r="{ref}" s="3"><f>{esc(v[1])}</f><v>{v[2]}</v></c>')
+                elif isinstance(v, tuple) and v[0] == "3dp":
+                    cells.append(f'<c r="{ref}" s="3"><v>{v[1]}</v></c>')
+                else:
+                    cells.append(f'<c r="{ref}" s="2"><v>{v}</v></c>')
+            rows_xml.append(f'<row r="{r}">{"".join(cells)}</row>')
+        merged = sh.get("merged", [])
+        merge_xml = (f'<mergeCells count="{len(merged)}">' + "".join(f'<mergeCell ref="{m}"/>' for m in merged) + "</mergeCells>"
+                     if merged else "")
+        drawing = ""
+        if sh.get("chart"):
+            drawing = '<drawing r:id="rIdD"/>'
+            parts[f"xl/worksheets/_rels/sheet{k}.xml.rels"] = rels_xml([("rIdD", "drawing", f"../drawings/drawing{k}.xml")])
+            parts[f"xl/drawings/drawing{k}.xml"] = (
+                HEAD + '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" '
+                f'{XA} {XR}><xdr:twoCellAnchor><xdr:graphicFrame><a:graphic><a:graphicData '
+                'uri="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart '
+                'xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" r:id="rIdC"/></a:graphicData></a:graphic>'
+                '</xdr:graphicFrame></xdr:twoCellAnchor></xdr:wsDr>')
+        parts[f"xl/worksheets/sheet{k}.xml"] = (HEAD + f'<worksheet {XS} {XR}><sheetData>{"".join(rows_xml)}</sheetData>'
+                                                f'{merge_xml}{drawing}</worksheet>')
+        wb_rels.append((f"rId{k}", "worksheet", f"worksheets/sheet{k}.xml"))
+        state = ' state="hidden"' if sh.get("hidden") else ""
+        entries.append(f'<sheet name="{esc(sh["name"])}" sheetId="{k}"{state} r:id="rId{k}"/>')
+    parts.update({
+        "[Content_Types].xml": types_xml(("xl/workbook.xml", "application/vnd.openxmlformats-officedocument."
+                                          "spreadsheetml.sheet.main+xml")),
+        "_rels/.rels": rels_xml([("rId1", "officeDocument", "xl/workbook.xml")]),
+        "xl/workbook.xml": HEAD + f'<workbook {XS} {XR}><sheets>{"".join(entries)}</sheets></workbook>',
+        "xl/_rels/workbook.xml.rels": rels_xml(wb_rels),
+        "xl/sharedStrings.xml": HEAD + f'<sst {XS} count="{len(strings)}" uniqueCount="{len(strings)}">'
+                                + "".join(f"<si><t>{esc(t)}</t></si>" for t in strings) + "</sst>",
+        "xl/styles.xml": (HEAD + f'<styleSheet {XS}><numFmts count="1"><numFmt numFmtId="164" formatCode="0.000"/></numFmts>'
+                          f'<fonts count="2"><font><sz val="11"/><name val="{font}"/></font><font><b/><sz val="11"/>'
+                          f'<name val="{font}"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill>'
+                          '<fill><patternFill patternType="gray125"/></fill></fills><cellXfs count="4">'
+                          '<xf numFmtId="0" fontId="0" fillId="0"/><xf numFmtId="0" fontId="1" fillId="0"/>'
+                          '<xf numFmtId="2" fontId="0" fillId="0"/><xf numFmtId="164" fontId="0" fillId="0"/></cellXfs></styleSheet>')})
+    write_zip(path, parts)
+
+
+ODF_NS = ('xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" '
+          'xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" '
+          'xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" '
+          'xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" '
+          'xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0" '
+          'xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0" '
+          'xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0" '
+          'xmlns:presentation="urn:oasis:names:tc:opendocument:xmlns:presentation:1.0" '
+          'xmlns:number="urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0" '
+          'xmlns:xlink="http://www.w3.org/1999/xlink" office:version="1.3"')
+ODF_MIME = {"text": "application/vnd.oasis.opendocument.text", "presentation": "application/vnd.oasis.opendocument.presentation",
+            "spreadsheet": "application/vnd.oasis.opendocument.spreadsheet"}
+
+
+def write_odf(path, kind, styles, automatic, body, pictures=None, flat=False):
+    """An OpenDocument file: zipped (content.xml + styles.xml) or flat (one office:document)."""
+    if flat:
+        doc = (HEAD + f'<office:document {ODF_NS} office:mimetype="{ODF_MIME[kind]}"><office:styles>{styles}</office:styles>'
+               f'<office:automatic-styles>{automatic}</office:automatic-styles><office:body><office:{kind}>{body}'
+               f'</office:{kind}></office:body></office:document>')
+        open(path, "w", encoding="utf-8").write(doc)
+        return
+    parts = {"META-INF/manifest.xml": HEAD + '<manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0" '
+             'manifest:version="1.3"><manifest:file-entry manifest:full-path="/" manifest:media-type="' + ODF_MIME[kind]
+             + '"/></manifest:manifest>',
+             "styles.xml": HEAD + f'<office:document-styles {ODF_NS}><office:styles>{styles}</office:styles>'
+             f'<office:automatic-styles>{automatic}</office:automatic-styles></office:document-styles>',
+             "content.xml": HEAD + f'<office:document-content {ODF_NS}><office:automatic-styles>{automatic}'
+             f'</office:automatic-styles><office:body><office:{kind}>{body}</office:{kind}></office:body></office:document-content>'}
+    for name, data in (pictures or {}).items():
+        parts[name] = data
+    write_zip(path, parts, ODF_MIME[kind])
+
+
+def write_pdf(path, pages, size=(595, 842), nested=False):
+    """A PDF with Helvetica text: pages are lists of (font size, y from the top, text).
+
+    nested=True draws each page the way Canva exports do: the page scales by 0.24 and flips y, then calls a
+    form XObject that scales by 3.125 and holds the text at size / 0.75, plus a second form with one picture.
+    The sizes a reader should report are the same as the flat file's."""
+    objs = ["<< /Type /Catalog /Pages 2 0 R >>", None, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"]
+    kids = []
+
+    def stream_obj(body, head=""):
+        objs.append(f"<< {head} /Length {len(body)} >>\nstream\n".encode("latin-1") + body + b"endstream")
+        return len(objs)
+    for lines in pages:
+        if not nested:
+            stream = "".join(f"BT /F1 {sz} Tf 72 {size[1] - y} Td ({t}) Tj ET\n" for sz, y, t in lines).encode("latin-1")
+            content = stream_obj(stream)
+            resources = "<< /Font << /F1 3 0 R >> >>"
+        else:
+            pixels = stream_obj(bytes([200, 30, 30, 30, 200, 30, 30, 30, 200, 220, 220, 220]),
+                                "/Type /XObject /Subtype /Image /Width 2 /Height 2 /ColorSpace /DeviceRGB /BitsPerComponent 8")
+            pic = stream_obj(b"q 100 0 0 100 0 0 cm /Im1 Do Q\n",
+                             f"/Type /XObject /Subtype /Form /BBox [0 0 2480 3508] /Resources << /XObject << /Im1 {pixels} 0 R >> >>")
+            text = "".join(f"BT /F1 {sz / 0.75:.4f} Tf 1 0 0 -1 96 {y / 0.75:.4f} Tm ({t}) Tj ET\n" for sz, y, t in lines)
+            body = stream_obj(f"q 3.125 0 0 3.125 0 0 cm {text}Q /Pic Do\n".encode("latin-1"),
+                              f"/Type /XObject /Subtype /Form /BBox [0 0 2480 3508] "
+                              f"/Resources << /Font << /F1 3 0 R >> /XObject << /Pic {pic} 0 R >> >>")
+            content = stream_obj(f"q .24 0 0 -.24 0 {size[1]} cm /X1 Do Q\n".encode("latin-1"))
+            resources = f"<< /XObject << /X1 {body} 0 R >> >>"
+        objs.append(f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {size[0]} {size[1]}] "
+                    f"/Resources {resources} /Contents {content} 0 R >>")
+        kids.append(len(objs))
+    objs[1] = f"<< /Type /Pages /Kids [{' '.join(f'{k} 0 R' for k in kids)}] /Count {len(kids)} >>"
+    out, offsets = bytearray(b"%PDF-1.4\n"), []
+    for i, o in enumerate(objs, 1):
+        offsets.append(len(out))
+        out += f"{i} 0 obj\n".encode() + (o if isinstance(o, bytes) else o.encode("latin-1")) + b"\nendobj\n"
+    xref = len(out)
+    out += f"xref\n0 {len(objs) + 1}\n0000000000 65535 f \n".encode() + b"".join(f"{o:010d} 00000 n \n".encode() for o in offsets)
+    out += f"trailer\n<< /Size {len(objs) + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n".encode()
+    open(path, "wb").write(bytes(out))
+
+
+
+def md_to_docx(md_path, docx_path):
+    """The same paragraphs and lists, saved as Word."""
+    blocks = []
+    for para in open(md_path, encoding="utf-8").read().strip().split("\n\n"):
+        lines = para.splitlines()
+        if all(l.startswith("- ") for l in lines):
+            blocks += [("li", l[2:]) for l in lines]
+        else:
+            blocks.append(("p", [(" ".join(lines), False)]))
+    write_docx(docx_path, blocks)
+
+
+def check_review_cases(tmp, d):
+    import ss_docs
+    from ss_common import StyleError
+    # a same-order rewrite saved as .docx is checked against a card learned from Markdown, and the reverse
+    text_card, text_fp = os.path.join(tmp, "text.json"), os.path.join(tmp, "text-fp.json")
+    remake_docx, sib_docx = os.path.join(d, "remake.docx"), os.path.join(d, "sibling.docx")
+    md_to_docx(os.path.join(tmp, "remake.md"), remake_docx)
+    md_to_docx(os.path.join(tmp, "sibling.md"), sib_docx)
+    p = cli("check", remake_docx, "--card", text_card, "--fingerprints", text_fp)
+    check("document check: a same-order rewrite saved as .docx fails against a Markdown card",
+          p.returncode == 1 and "order" in p.stdout and "PATTERN FAIL" in p.stdout, last_copy_line(p.stdout))
+    p = cli("check", sib_docx, "--card", text_card, "--fingerprints", text_fp)
+    check("document check: a reshuffled sibling saved as .docx passes against a Markdown card",
+          p.returncode == 0 and "PATTERN PASS" in p.stdout, summary_line(p.stdout))
+    ref_docx = os.path.join(d, "ref-text.docx")
+    md_to_docx(os.path.join(tmp, "ref.md"), ref_docx)
+    cli("measure", ref_docx, "-o", os.path.join(d, "m-ref-text.json"))
+    cli("card", os.path.join(d, "m-ref-text.json"), "-o", os.path.join(d, "ref-text.json"),
+        "--fingerprints", os.path.join(d, "ref-text-fp.json"))
+    p = cli("check", os.path.join(tmp, "remake.md"), "--card", os.path.join(d, "ref-text.json"),
+            "--fingerprints", os.path.join(d, "ref-text-fp.json"))
+    check("text check: a same-order rewrite in Markdown fails against a card learned from .docx",
+          p.returncode == 1 and "order" in p.stdout, last_copy_line(p.stdout))
+
+    # a part read many times counts once toward the unpacked limit (a master picture behind every slide)
+    big = os.path.join(d, "repeat.zip")
+    with zipfile.ZipFile(big, "w") as z:
+        z.writestr("a.bin", b"x" * 300000)
+    keep = ss_docs.MAX_TOTAL
+    ss_docs.MAX_TOTAL = 1000000
+    try:
+        pk = ss_docs.Pack(big, "test")
+        for _ in range(10):
+            pk.bytes("a.bin")
+        repeat_ok, why = True, "10 reads of a 0.3 MB part under a 1 MB limit"
+    except StyleError as e:
+        repeat_ok, why = False, str(e).replace(d, "")
+    finally:
+        ss_docs.MAX_TOTAL = keep
+    check("documents: a part read many times counts once toward the size limit", repeat_ok, why)
+
+    # a DTD is refused in any encoding, not only in UTF-8
+    bad = '<?xml version="1.0" encoding="UTF-16"?><!DOCTYPE a [<!ENTITY e "boom">]><a>&e;</a>'.encode("utf-16")
+    try:
+        ss_docs.parse_xml(bad, "utf16.xml")
+        refused = False
+    except StyleError:
+        refused = True
+    check("documents: XML with a DTD in UTF-16 is refused", refused, "refused" if refused else "parsed")
+
+    # two monthly sheets share their month header and nothing else: no copy alarm on the words
+    months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
+              "November", "December"]
+    rng = random.Random(4)
+
+    def monthly(path, labels):
+        with open(path, "w", encoding="utf-8", newline="") as f:
+            f.write("Item," + ",".join(months) + "\n")
+            for lab in labels:
+                f.write(lab + "," + ",".join(str(rng.randrange(100, 999)) for _ in months) + "\n")
+    ref_csv, new_csv = os.path.join(d, "ref-months.csv"), os.path.join(d, "new-months.csv")
+    monthly(ref_csv, ["Rent", "Power", "Water", "Phone", "Travel", "Food", "Repairs", "Books"])
+    monthly(new_csv, ["Seeds", "Tools", "Fuel", "Feed", "Labour", "Freight", "Fees", "Spares"])
+    cli("measure", ref_csv, "-o", os.path.join(d, "m-months.json"))
+    cli("card", os.path.join(d, "m-months.json"), "-o", os.path.join(d, "months.json"),
+        "--fingerprints", os.path.join(d, "months-fp.json"))
+    p = cli("check", new_csv, "--card", os.path.join(d, "months.json"), "--fingerprints", os.path.join(d, "months-fp.json"))
+    check("sheet check: a shared month header is not a copied text", "shares a run" not in p.stdout, last_copy_line(p.stdout))
+    # while a long note copied into a cell still is
+    note = ("Figures are shown before tax and include every branch that reported by the end of the second week of "
+            "the following month")
+    with open(new_csv, "a", encoding="utf-8") as f:
+        f.write(f"\"{note}\"\n")
+    with open(ref_csv, "a", encoding="utf-8") as f:
+        f.write(f"\"{note}\"\n")
+    cli("measure", ref_csv, "-o", os.path.join(d, "m-months.json"))
+    cli("card", os.path.join(d, "m-months.json"), "-o", os.path.join(d, "months.json"),
+        "--fingerprints", os.path.join(d, "months-fp.json"))
+    p = cli("check", new_csv, "--card", os.path.join(d, "months.json"), "--fingerprints", os.path.join(d, "months-fp.json"))
+    check("sheet check: a long note copied into a cell is still found", "shares a run" in p.stdout, last_copy_line(p.stdout))
+
+# ---------------------------------------------------------------- documents: plans for the copy scenarios
+def deck_slides(plan, bank, seed, pic_seed):
+    rng = random.Random(seed)
+    out = []
+    for i, s in enumerate(plan):
+        out.append({"title": sentence(rng, bank, s["title"])[:-1],
+                    "bullets": [sentence(rng, bank, n)[:-1] for n in s["bullets"]],
+                    "pictures": [png(pic_seed + i)] if s["picture"] else [],
+                    "body_box": (0.07, 0.27, s["body_w"], 0.6), "bg": s["bg"]})
+    return out
+
+
+def deck_plan(seed, n=14):
+    rng = random.Random(seed)
+    return [{"title": rng.randrange(2, 6), "bullets": [rng.randrange(3, 10) for _ in range(rng.randrange(1, 6))],
+             "picture": rng.random() < 0.35, "body_w": rng.choice([0.45, 0.6, 0.75, 0.86]),
+             "bg": "E7E6E6" if rng.random() < 0.3 else None} for _ in range(n)]
+
+
+def doc_blocks(plan, bank, seed, pictures):
+    rng = random.Random(seed)
+    out, k = [], 0
+    for i, para in enumerate(plan):
+        if i % 5 == 0:
+            out.append(("h", sentence(rng, bank, 3)[:-1]))
+        if para and para[0] == "list":
+            out += [("li", sentence(rng, bank, 4)[:-1]) for _ in range(para[1])]
+        else:
+            out.append(("p", [(" ".join(sentence(rng, bank, n, q) for n, q in para), False)]))
+        if i % 7 == 3 and k < len(pictures):
+            out.append(("pic", k))
+            k += 1
+    return out
+
+
+def book_plan(seed, n=8):
+    rng = random.Random(seed)
+    return [{"cols": rng.randrange(2, 9), "rows": rng.randrange(4, 26), "formula": rng.random() < 0.5} for _ in range(n)]
+
+
+def book_sheets(plan, bank, seed):
+    rng = random.Random(seed)
+    sheets = []
+    for i, p in enumerate(plan):
+        rows = [[sentence(rng, bank, 1)[:-1] for _ in range(p["cols"])]]
+        for r in range(2, p["rows"] + 1):
+            row = [sentence(rng, bank, 2)[:-1]] + [round(rng.uniform(1, 999), 2) for _ in range(p["cols"] - 1)]
+            if p["formula"]:
+                row[-1] = ("=", f"SUM(B{r}:{col_name(p['cols'] - 1)}{r})", 1)
+            rows.append(row)
+        sheets.append({"name": f"Sheet {i + 1}", "rows": rows})
+    return sheets
+
+
+# ---------------------------------------------------------------- documents: checks
+def near(a, b, tol=1e-3):
+    return a is not None and b is not None and abs(a - b) <= tol
+
+
+def nears(xs, ys, tol=1e-3):
+    return xs is not None and len(xs) == len(ys) and all(near(x, y, tol) for x, y in zip(xs, ys))
+
+
+def check_documents(tmp, np=None):
+    import ss_docs
+    from ss_common import StyleError
+    d = os.path.join(tmp, "docs")
+    os.makedirs(d, exist_ok=True)
+
+    # PowerPoint: inheritance from layout, master and theme; backgrounds; hidden slides; shrink-to-fit
+    known = os.path.join(d, "known.pptx")
+    write_pptx(known, [
+        {"title": "Alpha beta gamma", "bullets": ["one two three four five"] * 4},
+        {"title": "Dark room", "title_sz": 4000, "bg": "101820", "body_pr": '<a:normAutofit fontScale="50000"/>',
+         "body_rpr": '><a:solidFill><a:schemeClr val="bg1"/></a:solidFill></a:rPr>', "bullets": ["light words on dark"],
+         "plain": ["not a bullet here"]},
+        {"title": "Green field", "full_rect": "accent1", "pictures": [png(1)]},
+        {"title": "Hidden slide words", "bullets": ["never counted at all"], "hidden": True}])
+    info, v, fp, text = ss_docs.measure(known, "slides")
+    g = (0.2126 * 0x2E + 0.7152 * 0x7D + 0.0722 * 0x32) / 255
+    ok = (info["units"] == 3 and v.get("slide_text") == [23, 10, 2] and v.get("slide_bullets") == [4, 1, 0]
+          and v.get("title_size") == [44, 40, 44] and v.get("body_size") == [28, 14] and v.get("slide_images") == [0, 0, 1]
+          and nears(v.get("bg_luma"), [1.0, 0.0897, g]) and nears(v.get("type_ratio"), [44 / 28, 40 / 14])
+          and nears(v.get("aspect"), [16 / 9]) and v.get("typefaces") == [2] and v.get("colors_used") == [1]
+          and "Hidden slide words" in text)
+    check("slides: text, bullets, sizes and backgrounds through layout, master and theme (a hidden slide is not measured, but its words reach the copy check)", ok,
+          f"{info['units']} slides, text {v.get('slide_text')}, bullets {v.get('slide_bullets')}, title pt {v.get('title_size')}, "
+          f"body pt {v.get('body_size')}, background {[round(x, 3) for x in v.get('bg_luma', [])]}, faces {v.get('typefaces')}")
+    contrast = v.get("text_contrast", [])
+    check("slides: text contrast against the slide's own background", len(contrast) == 3 and near(contrast[0], 21, 0.01)
+          and contrast[1] > 15 and 3 < contrast[2] < 5, f"WCAG {[round(c, 1) for c in contrast]}")
+
+    # Word: style chain, docDefaults, spacing inherited attribute by attribute, lists, tables, pictures, margins
+    known_doc = os.path.join(d, "known.docx")
+    write_docx(known_doc, [("h", "Overview of the plan"),
+                           ("p", [("Alpha beta gamma delta. ", False), ("Bold run here.", True)], {"jc": "both"}),
+                           ("p", [("Third sentence comes now. Fourth one ends it.", False)], {"after": 0}),
+                           ("li", "Item one"), ("li", "Item two"), ("table", [["cell a", "cell b"]]), ("pic", 0)],
+               pictures=[png(2)])
+    info, v, fp, text = ss_docs.measure(known_doc, "document")
+    # the heading is bold through its style; chars are counted without spaces at the ends of runs
+    chars = [len("Overview of the plan"), len("Alpha beta gamma delta."), len("Bold run here."),
+             len("Third sentence comes now. Fourth one ends it."), len("Item one"), len("Item two"), len("cell a"), len("cell b")]
+    bold = (chars[0] + chars[2]) / sum(chars)
+    ok = (v.get("body_size") == [11, 11, 11, 11] and nears(v.get("type_ratio"), [18 / 11])
+          and nears(v.get("line_spacing"), [276 / 240] * 4) and nears(v.get("paragraph_space"), [8, 0, 8, 8])
+          and nears(v.get("margin_share"), [2880 / 11906]) and nears(v.get("justified_share"), [0.5])
+          and nears(v.get("image_rate"), [2.5]) and nears(v.get("table_rate"), [2.5]) and v.get("typefaces") == [1]
+          and v.get("sentence_length") == [4, 3, 4, 4, 2, 2] and nears(v.get("bold_share"), [bold]))
+    check("document: Word styles, inherited spacing, lists, tables, pictures and margins", ok,
+          f"body pt {v.get('body_size')}, line {v.get('line_spacing')}, after {v.get('paragraph_space')}, "
+          f"margins {[round(x, 3) for x in v.get('margin_share', [])]}, sentences {v.get('sentence_length')}, "
+          f"bold {[round(x, 3) for x in v.get('bold_share', [])]}")
+
+    # Excel: shared strings, number formats, formulas, merged ranges, charts, hidden sheets
+    known_xl = os.path.join(d, "known.xlsx")
+    write_xlsx(known_xl, [{"name": "Data", "chart": True, "merged": ["A5:C5"],
+                           "rows": [["Name", "Score", "Double"], ["Ann", 1.5, ("=", "B2*2", 3)], ["Bo", 2.25, ("=", "B3*2", 4.5)],
+                                    ["Cy", 3, ("=", "B4*2", 6)], ["Total row"]]},
+                          {"name": "Secret", "hidden": True, "rows": [["never"], ["read"]]}])
+    info, v, fp, text = ss_docs.measure(known_xl, "sheet")
+    ok = (info["units"] == 1 and v.get("sheet_columns") == [3] and v.get("sheet_rows") == [5]
+          and nears(v.get("numeric_share"), [6 / 13]) and nears(v.get("formula_share"), [3 / 13])
+          and v.get("decimals") == [2, 3, 2, 3, 2, 3] and v.get("header_styled") == [1.0] and v.get("merged_rate") == [1]
+          and v.get("chart_rate") == [1] and "never" in text)
+    check("sheet: numbers, formulas, number formats, merges and charts (a hidden sheet is not measured, but its words reach the copy check)", ok,
+          f"{info['units']} sheet, {v.get('sheet_columns')} x {v.get('sheet_rows')}, numeric {v.get('numeric_share')}, "
+          f"formulas {v.get('formula_share')}, decimals {v.get('decimals')}, charts {v.get('chart_rate')}")
+
+    # OpenDocument: zipped text and slides, flat spreadsheet
+    odt = os.path.join(d, "known.odt")
+    write_odf(odt, "text",
+              '<style:default-style style:family="paragraph"><style:text-properties fo:font-size="12pt" style:font-name="Lora"/>'
+              '</style:default-style><style:style style:name="Heading_1" style:family="paragraph"><style:text-properties '
+              'fo:font-size="20pt" fo:font-weight="bold"/></style:style>',
+              '<style:style style:name="P1" style:family="paragraph"><style:paragraph-properties fo:text-align="justify" '
+              'fo:line-height="150%" fo:margin-bottom="0.5cm"/></style:style><style:style style:name="T1" style:family="text">'
+              '<style:text-properties fo:font-weight="bold"/></style:style><style:page-layout style:name="pm1">'
+              '<style:page-layout-properties fo:page-width="21cm" fo:page-height="29.7cm" fo:margin-left="2cm" '
+              'fo:margin-right="2cm"/></style:page-layout>',
+              '<text:h text:style-name="Heading_1" text:outline-level="1">A heading</text:h>'
+              '<text:p text:style-name="P1">One two three. <text:span text:style-name="T1">Four five.</text:span> Six seven.</text:p>'
+              '<text:list><text:list-item><text:p>Listed item</text:p></text:list-item></text:list>'
+              '<table:table><table:table-row><table:table-cell><text:p>cell</text:p></table:table-cell></table:table-row></table:table>'
+              '<text:p><draw:frame><draw:image xlink:href="Pictures/a.png"/></draw:frame></text:p>',
+              {"Pictures/a.png": png(3)})
+    info, v, fp, text = ss_docs.measure(odt, "document")
+    ok = (nears(v.get("line_spacing"), [1.5, 1.0]) and nears(v.get("paragraph_space"), [14.173, 0.0], 0.01)
+          and nears(v.get("type_ratio"), [20 / 12]) and nears(v.get("margin_share"), [4 / 21])
+          and nears(v.get("justified_share"), [1.0]) and v.get("image_rate") == [5.0] and v.get("table_rate") == [5.0]
+          and v.get("sentence_length") == [3, 2, 2, 2] and fp.get("media"))
+    check("document: OpenDocument text styles, page and pictures", ok,
+          f"line {v.get('line_spacing')}, after {[round(x, 2) for x in v.get('paragraph_space', [])]}, "
+          f"ratio {v.get('type_ratio')}, margins {[round(x, 3) for x in v.get('margin_share', [])]}, sentences {v.get('sentence_length')}")
+    odp = os.path.join(d, "known.odp")
+    write_odf(odp, "presentation",
+              '<style:style style:name="Default-title" style:family="presentation"><style:text-properties fo:font-size="40pt"/>'
+              '</style:style><style:style style:name="Default-outline1" style:family="presentation"><style:text-properties '
+              'fo:font-size="24pt"/></style:style>',
+              '<style:style style:name="dp1" style:family="drawing-page"><style:drawing-page-properties draw:fill="solid" '
+              'draw:fill-color="#101820"/></style:style><style:style style:name="dp2" style:family="drawing-page">'
+              '<style:drawing-page-properties presentation:visibility="hidden"/></style:style><style:page-layout style:name="PM1"><style:page-layout-properties '
+              'fo:page-width="28cm" fo:page-height="15.75cm"/></style:page-layout>',
+              '<draw:page draw:style-name="dp1"><draw:frame presentation:class="title" presentation:style-name="Default-title" '
+              'svg:x="1cm" svg:y="1cm" svg:width="26cm" svg:height="3cm"><draw:text-box><text:p>Slide title words</text:p>'
+              '</draw:text-box></draw:frame><draw:frame presentation:class="outline" presentation:style-name="Default-outline1" '
+              'svg:x="1cm" svg:y="5cm" svg:width="26cm" svg:height="9cm"><draw:text-box><text:list><text:list-item><text:p>'
+              'First point here</text:p></text:list-item><text:list-item><text:p>Second point here</text:p></text:list-item>'
+              '</text:list></draw:text-box></draw:frame></draw:page><draw:page><draw:frame presentation:class="title" '
+              'presentation:style-name="Default-title" svg:x="1cm" svg:y="1cm" svg:width="26cm" svg:height="3cm"><draw:text-box>'
+              '<text:p>Plain</text:p></draw:text-box></draw:frame></draw:page><draw:page draw:style-name="dp2"><draw:frame '
+              'presentation:class="title" presentation:style-name="Default-title" svg:x="1cm" svg:y="1cm" svg:width="26cm" '
+              'svg:height="3cm"><draw:text-box><text:p>Hidden page words</text:p></draw:text-box></draw:frame></draw:page>')
+    info, v, fp, text = ss_docs.measure(odp, "slides")
+    ok = (info["units"] == 2 and v.get("slide_text") == [9, 1] and v.get("slide_bullets") == [2, 0]
+          and v.get("title_size") == [40, 40] and v.get("body_size") == [24] and nears(v.get("bg_luma"), [0.0897, 1.0])
+          and nears(v.get("aspect"), [28 / 15.75]) and "Hidden page words" in text)
+    check("slides: OpenDocument presentation (a hidden page is not measured, but its words reach the copy check)", ok, f"text {v.get('slide_text')}, bullets {v.get('slide_bullets')}, "
+          f"title pt {v.get('title_size')}, background {[round(x, 3) for x in v.get('bg_luma', [])]}")
+    fods = os.path.join(d, "known.fods")
+    write_odf(fods, "spreadsheet", '<number:number-style style:name="N2"><number:number number:decimal-places="2"/>'
+              '</number:number-style>', '<style:style style:name="ce1" style:family="table-cell" style:data-style-name="N2"/>'
+              '<style:style style:name="ta2" style:family="table"><style:table-properties table:display="false"/></style:style>',
+              '<table:table table:name="T"><table:table-row><table:table-cell office:value-type="string"><text:p>Item</text:p>'
+              '</table:table-cell><table:table-cell office:value-type="string"><text:p>Cost</text:p></table:table-cell>'
+              '</table:table-row><table:table-row table:number-rows-repeated="2"><table:table-cell office:value-type="string">'
+              '<text:p>Pen</text:p></table:table-cell><table:table-cell table:style-name="ce1" office:value-type="float" '
+              'office:value="1.5" table:formula="of:=1+0.5"><text:p>1.50</text:p></table:table-cell></table:table-row>'
+              '<table:table-row table:number-rows-repeated="1048570"><table:table-cell table:number-columns-repeated="1024"/>'
+              '</table:table-row></table:table><table:table table:name="H" table:style-name="ta2"><table:table-row>'
+              '<table:table-cell office:value-type="string"><text:p>Hidden cell words</text:p></table:table-cell>'
+              '</table:table-row></table:table>', flat=True)
+    info, v, fp, text = ss_docs.measure(fods, "sheet")
+    ok = (v.get("sheet_columns") == [2] and v.get("sheet_rows") == [3] and nears(v.get("numeric_share"), [2 / 6])
+          and nears(v.get("formula_share"), [2 / 6]) and v.get("decimals") == [2, 2] and info["units"] == 1
+          and "Hidden cell words" in text)
+    check("sheet: flat OpenDocument spreadsheet with repeated rows (a hidden table is not measured, but its words "
+          "reach the copy check)", ok,
+          f"{v.get('sheet_columns')} x {v.get('sheet_rows')}, numeric {v.get('numeric_share')}, decimals {v.get('decimals')}")
+
+    # EPUB, RTF, CSV
+    epub = os.path.join(d, "known.epub")
+    chap = ('<?xml version="1.0" encoding="utf-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml"><head><title>x</title>'
+            '<style>p {{ margin: 0 }}</style></head><body><h1>{h}</h1><p>{a}</p><p>{b}</p>{extra}</body></html>')
+    write_zip(epub, {"META-INF/container.xml": '<?xml version="1.0"?><container version="1.0" xmlns="urn:oasis:names:tc:'
+                     'opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/'
+                     'oebps-package+xml"/></rootfiles></container>',
+                     "OEBPS/content.opf": '<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0">'
+                     '<manifest><item id="c1" href="c1.xhtml" media-type="application/xhtml+xml"/><item id="c2" href="c2.xhtml" '
+                     'media-type="application/xhtml+xml"/><item id="i1" href="img/a.png" media-type="image/png"/></manifest>'
+                     '<spine><itemref idref="c1"/><itemref idref="c2"/></spine></package>',
+                     "OEBPS/c1.xhtml": chap.format(h="Part one", a="Short one. Then a longer second sentence.", b="Third here.",
+                                                   extra='<img src="img/a.png"/>'),
+                     "OEBPS/c2.xhtml": chap.format(h="Part two", a="Fourth sentence now.", b="Fifth and last one.",
+                                                   extra="<table><tr><td>x</td></tr></table>"),
+                     "OEBPS/img/a.png": png(4)}, "application/epub+zip")
+    info, v, fp, text = ss_docs.measure(epub, "document")
+    ok = (v.get("sentence_length") == [2, 5, 2, 3, 4] and v.get("image_rate") == [10 * 1 / 4] and v.get("table_rate") == [10 * 1 / 4]
+          and len(fp.get("media", [])) == 1 and "margin" not in text)
+    check("document: EPUB chapters in spine order, pictures and tables", ok,
+          f"sentences {v.get('sentence_length')}, pictures {v.get('image_rate')}, tables {v.get('table_rate')}")
+    rtf = os.path.join(d, "known.rtf")
+    open(rtf, "wb").write(
+        b"{\\rtf1\\ansi\\ansicpg874\\deff0{\\fonttbl{\\f0\\fnil\\fcharset222 Tahoma;}{\\f1\\froman Times New Roman;}}"
+        b"{\\colortbl;\\red200\\green30\\blue30;}{\\*\\generator Hand 1.0;}{\\stylesheet{\\s0 Normal;}}\n"
+        b"\\paperw11906\\paperh16838\\margl1440\\margr1440\n"
+        b"\\pard\\outlinelevel0\\fs40\\b Heading here\\b0\\par\n"
+        b"\\pard\\qj\\sl360\\slmult1\\sa200\\fs24 First sentence is here. {\\b Bold bit.} Third one.\\par\n"
+        b"\\pard\\sa200\\fs24\\cf1 \\u3626?\\u3623?\\u3633?\\u3626?\\u3604?\\u3637? \\'a4\\'c3\\'d1\\'ba\\par\n"
+        b"{\\*\\shppict{\\pict\\pngblip 89504e470d0a1a0a}}{\\nonshppict{\\pict\\wmetafile8 0100090000}}\\par\n}")
+    info, v, fp, text = ss_docs.measure(rtf, "document")
+    ok = ("สวัสดี ครับ" in text and nears(v.get("line_spacing"), [1.5, 1.0]) and nears(v.get("paragraph_space"), [10, 10])
+          and v.get("body_size") == [12, 12] and nears(v.get("type_ratio"), [20 / 12]) and nears(v.get("justified_share"), [0.5])
+          and nears(v.get("margin_share"), [2880 / 11906]) and v.get("colors_used") == [1] and v.get("image_rate") == [5.0]
+          and "Hand" not in text and "Normal" not in text)
+    check("document: RTF formatting, code page 874 and Unicode Thai, pictures", ok,
+          f"Thai {'ok' if 'สวัสดี ครับ' in text else 'missing'}, line {v.get('line_spacing')}, after {v.get('paragraph_space')}, "
+          f"pt {v.get('body_size')}, colours {v.get('colors_used')}, pictures {v.get('image_rate')}")
+    csvp = os.path.join(d, "known.csv")
+    open(csvp, "w", encoding="utf-8").write("name;score\nA;1.50\nB;2.25\nC;3\n")
+    info, v, fp, text = ss_docs.measure(csvp, "sheet")
+    check("sheet: CSV with a sniffed delimiter", v.get("sheet_columns") == [2] and nears(v.get("numeric_share"), [3 / 8])
+          and v.get("decimals") == [2, 2, 0], f"{v.get('sheet_columns')} columns, numeric {v.get('numeric_share')}, "
+          f"decimals {v.get('decimals')}")
+
+    # the words of any document on the text route
+    p = cli("measure", known_doc, "--medium", "text", "-o", os.path.join(d, "m-wordsonly.json"))
+    m = json.load(open(os.path.join(d, "m-wordsonly.json"), encoding="utf-8"))
+    check("text route: a .docx read for its words only", m["medium"] == "text" and m["refs"][0]["values"]["sentence_length"]
+          == [4, 3, 4, 4, 2, 2], p.stdout.strip().splitlines()[0])
+
+    # files that must be refused, and formats that need a converter
+    evil = os.path.join(d, "evil.docx")
+    write_zip(evil, {"word/document.xml": '<?xml version="1.0"?><!DOCTYPE d [<!ENTITY x "xxxxxxxx">]><w:document '
+                     f'{XW}><w:body><w:p><w:r><w:t>&x;&x;</w:t></w:r></w:p></w:body></w:document>'})
+    p = cli("measure", evil, "-o", os.path.join(d, "m-evil.json"), ok_codes=(2,))
+    check("document: XML with a DTD or entities is refused", "refused" in p.stderr, p.stderr.strip()[-120:])
+    old = ss_docs.MAX_PART
+    try:
+        ss_docs.MAX_PART = 1000
+        try:
+            ss_docs.measure(known, "slides")
+            refused = False
+        except StyleError as e:
+            refused = "refused" in str(e)
+    finally:
+        ss_docs.MAX_PART = old
+    check("document: a part bigger than the size limit is refused", refused, "MAX_PART lowered to 1000 bytes")
+    key = os.path.join(d, "deck.key")
+    open(key, "wb").write(b"PK\x03\x04 not really keynote")
+    if ss_docs.soffice():
+        skip("document: a missing converter is named", "LibreOffice is installed, so .key converts")
+    else:
+        p = cli("measure", key, "-o", os.path.join(d, "m-key.json"), ok_codes=(2,))
+        check("document: a missing converter is named", "LibreOffice" in p.stderr, p.stderr.strip()[-120:])
+
+    # third-party writers: macOS textutil turns the Word fixture into .doc, .odt and .rtf
+    if shutil.which("textutil"):
+        got = {}
+        for fmt in ("doc", "odt", "rtf"):
+            out = os.path.join(d, f"textutil.{fmt}")
+            subprocess.run(["textutil", "-convert", fmt, known_doc, "-output", out], capture_output=True, check=True)
+            try:
+                got[fmt] = ss_docs.measure(out, "document")[1].get("sentence_length")
+            except StyleError as e:
+                got[fmt] = str(e)
+        # textutil keeps the paragraphs and lists but drops heading styles (the heading comes back as a sentence) and,
+        # in .doc, the table: the sentences of the prose must all come back, in order
+        want = [4, 3, 4, 4, 2, 2]
+        ok = all(isinstance(x, list) and any(x[i:i + len(want)] == want for i in range(len(x))) for x in got.values())
+        check("document: .doc, .odt and .rtf written by textutil read the same sentences", ok,
+              "; ".join(f"{k} {x}" for k, x in got.items()))
+    else:
+        skip("document: .doc, .odt and .rtf written by textutil", "textutil is macOS only")
+
+    # PDF, when pypdf or pdftotext is there
+    pdf = os.path.join(d, "known.pdf")
+    write_pdf(pdf, [[(24, 80, "Big heading"), (12, 120, "First sentence here. Second one there."), (12, 140, "Third sentence.")],
+                    [(12, 80, "Fourth sentence on page two."), (12, 100, "- a listed point")]])
+    try:
+        import pypdf  # noqa: F401
+        have_pdf = "pypdf"
+    except ImportError:
+        have_pdf = "pdftotext" if shutil.which("pdftotext") else None
+    if have_pdf:
+        info, v, fp, text = ss_docs.measure(pdf, "document")
+        ok = info.get("pages") == 2 and v.get("page_text") == [10, 8] and nears(v.get("aspect"), [595 / 842]) and "Big heading" in text
+        if have_pdf == "pypdf":
+            ok = ok and nears(v.get("type_ratio"), [2.0]) and v.get("sentence_length") == [3, 3, 2, 5, 3]
+        check(f"document: PDF pages, text and headings ({have_pdf})", ok,
+              f"pages {info.get('pages')}, text per page {v.get('page_text')}, ratio {v.get('type_ratio')}, "
+              f"sentences {v.get('sentence_length')}")
+        info, v, fp, text = ss_docs.measure(pdf, "slides")
+        check("slides: a PDF read as a deck with --medium slides", info["units"] == 2 and v.get("slide_text") == [10, 8],
+              f"{info['units']} slides, text {v.get('slide_text')}")
+        cli("measure", pdf, "-o", os.path.join(d, "m-pdf.json"))
+        cli("card", os.path.join(d, "m-pdf.json"), "-o", os.path.join(d, "pdf.json"), "--fingerprints", os.path.join(d, "pdf-fp.json"))
+        p = cli("check", pdf, "--card", os.path.join(d, "pdf.json"), "--fingerprints", os.path.join(d, "pdf-fp.json"))
+        check("document check: a PDF measures, cards and fails as its own copy", p.returncode == 1 and "PATTERN FAIL" in p.stdout,
+              last_copy_line(p.stdout))
+        if have_pdf == "pypdf":
+            nested = os.path.join(d, "nested.pdf")
+            write_pdf(nested, [[(24, 80, "Big heading"), (12, 120, "First sentence here. Second one there."),
+                                (12, 140, "Third sentence.")]], nested=True)
+            info, v, fp, text = ss_docs.measure(nested, "document")
+            check("document: PDF text inside scaled form XObjects keeps its real size (a Canva export)",
+                  nears(v.get("body_size"), [12.0]) and nears(v.get("type_ratio"), [2.0]) and len(fp.get("media", [])) == 1,
+                  f"body {v.get('body_size')} pt, ratio {v.get('type_ratio')}, pictures {len(fp.get('media', []))}")
+    else:
+        skip("document: PDF", "needs pypdf (pip install pypdf) or poppler's pdftotext")
+
+    # copy scenarios: same as the text route, one per document medium
+    plan = deck_plan(4)
+    write_pptx(os.path.join(d, "deck-ref.pptx"), deck_slides(plan, WORDS, 1, 100))
+    shutil.copy(os.path.join(d, "deck-ref.pptx"), os.path.join(d, "deck-copy.pptx"))
+    write_pptx(os.path.join(d, "deck-remake.pptx"), deck_slides(plan, WORDS2, 2, 200))
+    shuffled = plan[:]
+    random.Random(8).shuffle(shuffled)
+    write_pptx(os.path.join(d, "deck-sibling.pptx"), deck_slides(shuffled, WORDS2, 3, 300))
+    rng = random.Random(6)
+    write_pptx(os.path.join(d, "deck-far.pptx"),
+               [{"title": sentence(rng, WORDS2, 6)[:-1], "plain": [sentence(rng, WORDS2, 40) for _ in range(3)], "bg": "101820",
+                 "body_rpr": '><a:solidFill><a:schemeClr val="bg1"/></a:solidFill></a:rPr>', "body_box": (0.02, 0.02, 0.96, 0.96)}
+                for _ in range(10)], size=(9144000, 6858000), sizes=(6000, 1400), fonts=("Courier New", "Courier New"))
+    deck_pair(d, "slides", "deck", ".pptx")
+
+    tplan = text_plan(1)
+    write_docx(os.path.join(d, "doc-ref.docx"), doc_blocks(tplan, WORDS, 1, [png(400 + i) for i in range(4)]),
+               pictures=[png(400 + i) for i in range(4)])
+    shutil.copy(os.path.join(d, "doc-ref.docx"), os.path.join(d, "doc-copy.docx"))
+    write_docx(os.path.join(d, "doc-remake.docx"), doc_blocks(tplan, WORDS2, 2, [png(500 + i) for i in range(4)]),
+               pictures=[png(500 + i) for i in range(4)])
+    shuffled = tplan[:]
+    random.Random(5).shuffle(shuffled)
+    write_docx(os.path.join(d, "doc-sibling.docx"), doc_blocks(shuffled, WORDS2, 3, [png(600 + i) for i in range(4)]),
+               pictures=[png(600 + i) for i in range(4)])
+    rng = random.Random(9)
+    write_docx(os.path.join(d, "doc-far.docx"), [("p", [(" ".join(sentence(rng, WORDS2, 40) for _ in range(30)), False)])],
+               body_half=32, line=480, after=0, margin=720, font="Courier New")
+    deck_pair(d, "document", "doc", ".docx")
+
+    bplan = book_plan(3)
+    write_xlsx(os.path.join(d, "book-ref.xlsx"), book_sheets(bplan, WORDS, 1))
+    shutil.copy(os.path.join(d, "book-ref.xlsx"), os.path.join(d, "book-copy.xlsx"))
+    write_xlsx(os.path.join(d, "book-remake.xlsx"), book_sheets(bplan, WORDS2, 2))
+    shuffled = bplan[:]
+    random.Random(2).shuffle(shuffled)
+    write_xlsx(os.path.join(d, "book-sibling.xlsx"), book_sheets(shuffled, WORDS2, 3))
+    rng = random.Random(7)
+    write_xlsx(os.path.join(d, "book-far.xlsx"), [{"name": f"S{i}", "rows": [[sentence(rng, WORDS2, 3)[:-1] for _ in range(40)]
+                                                                            for _ in range(3)]} for i in range(3)],
+               bold_header=False, font="Courier New")
+    deck_pair(d, "sheet", "book", ".xlsx")
+
+    # a picture saved again with other bytes is still the reference's picture (needs numpy and ffmpeg)
+    resaved = deck_slides(shuffled_deck(plan), WORDS2, 3, 300)
+    first = next(i for i, s in enumerate(plan) if s["picture"])
+    resaved[0]["pictures"] = [png(100 + first, level=1)]
+    write_pptx(os.path.join(d, "deck-resaved.pptx"), resaved)
+    same_bytes = png(100 + first, level=1) == png(100 + first)
+    p = cli("check", os.path.join(d, "deck-resaved.pptx"), "--card", os.path.join(d, "slides.json"),
+            "--fingerprints", os.path.join(d, "slides-fp.json"))
+    if np is not None and shutil.which("ffmpeg"):
+        check("slides check: a reference picture saved again with other bytes fails the pattern side",
+              not same_bytes and "PATTERN FAIL" in p.stdout and "look like" in p.stdout, last_copy_line(p.stdout))
+    else:
+        check("slides check: without numpy, pictures are compared by bytes and the gap is said",
+              "bytes only" in p.stdout, summary_line(p.stdout))
+
+    # a line break inside a Word paragraph still ends a sentence, as it does in a Markdown file, even where the
+    # lines meet on a number or an English word (a space there would not end a Thai sentence)
+    br = os.path.join(d, "thai-break.docx")
+    write_docx(br, [("p", [("ราคา 500 บาท", False), ("<BR>", False), ("จ่ายด้วย QR", False), ("<BR>", False),
+                           ("ขอบคุณ Team", False)])])
+    with zipfile.ZipFile(br) as z:
+        parts = {n: z.read(n) for n in z.namelist()}
+    parts["word/document.xml"] = parts["word/document.xml"].replace(
+        b'<w:r><w:t xml:space="preserve">&lt;BR&gt;</w:t></w:r>', b"<w:r><w:br/></w:r>")
+    with zipfile.ZipFile(br, "w") as z:
+        for n, data in parts.items():
+            z.writestr(n, data)
+    info, v, fp, text = ss_docs.measure(br, "document")
+    check("document: a line break inside a Thai paragraph ends a sentence", v.get("sentence_length") == [10, 10, 10],
+          f"sentences {v.get('sentence_length')}")
+
+    # the copy check across writing media, sizes counted once, DTDs in any encoding, sheet labels
+    check_review_cases(tmp, d)
+    return [os.path.join(d, f"{m}.json") for m in ("slides", "document", "sheet")]
+
+
+def shuffled_deck(plan):
+    out = plan[:]
+    random.Random(8).shuffle(out)
+    return out
+
+
+def deck_pair(d, medium, stem, ext):
+    paths = {k: os.path.join(d, f"{stem}-{k}{ext}") for k in ("ref", "copy", "remake", "sibling", "far")}
+    cli("measure", paths["ref"], "-o", os.path.join(d, f"m-{medium}.json"))
+    cli("card", os.path.join(d, f"m-{medium}.json"), "-o", os.path.join(d, f"{medium}.json"),
+        "--fingerprints", os.path.join(d, f"{medium}-fp.json"))
+    run_pair(d, medium, paths["copy"], paths["remake"], paths["sibling"], paths["far"])
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--keep", help="write fixtures here and keep them")
@@ -679,6 +1560,9 @@ def main():
                 c = section(name, fn, np, tmp)
                 if c:
                     cards.append(c)
+        got = section("documents", check_documents, tmp, np if have_ffmpeg else None)
+        if got:
+            cards += [c for c in got if os.path.exists(c)]
         if cards:
             section("card and brief", check_card_and_brief, cards)
     finally:

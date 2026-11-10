@@ -267,6 +267,20 @@ def measure_images(paths):
     return info, values, fp
 
 
+def picture_hash(path):
+    """(dHash, grey layout) of a picture embedded in a document, or None for a flat one (too little contrast to
+    tell apart). Grid cells are relative, so the stretch to a square changes nothing between two copies."""
+    np = numpy()
+    raw = run(["ffmpeg", "-v", "error", *media_in(path), "-frames:v", "1", "-vf", "scale=128:128:flags=area,format=gray",
+               "-f", "rawvideo", "-"]).stdout
+    if len(raw) < 128 * 128:
+        raise StyleError(f"{path}: not a picture ffmpeg can decode")
+    Y = np.frombuffer(raw, np.uint8)[: 128 * 128].reshape(128, 128).astype(np.float32) / 255
+    if float(Y.std()) < 0.03:
+        return None
+    return dhash(np, Y), thumb(np, Y)
+
+
 # ---------------------------------------------------------------- audio
 def ebur128(path, max_seconds):
     err = run(["ffmpeg", "-hide_banner", "-nostats", "-t", str(max_seconds), *media_in(path), "-vn", "-af",

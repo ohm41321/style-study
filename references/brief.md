@@ -8,8 +8,8 @@ style second. A maker who starts from the style targets ends up rebuilding the r
 python3 scripts/style.py brief style.json --for TARGET --subject "what is being made, for whom" -o brief.md
 ```
 
-`TARGET` is the medium of the new work: `video`, `audio`, `text`, `image`, `slides`, `ui` or `any`. It may
-differ from the reference's medium.
+`TARGET` is the medium of the new work: `video`, `audio`, `text`, `image`, `slides`, `document`, `sheet`,
+`ui` or `any`. It may differ from the reference's medium.
 
 ## The seven sections
 

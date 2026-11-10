@@ -23,9 +23,12 @@ same step as 4 s against 8 s; the others get slack in their own units, at least 
 passes when 75% or more of the dimensions are in range and no core dimension is off.
 
 Core dimensions: shot length, cuts per minute, movement (video); onsets per second, spectral centroid
-(audio); sentence length, sentences per paragraph (text). Images have none.
+(audio); sentence length, sentences per paragraph (text and document); text per slide, slide area covered,
+background brightness (slides); columns per sheet, share of number cells (sheet). Images have none.
 
-English and Thai text are compared only on the dimensions both languages share.
+English and Thai writing are compared only on the dimensions both languages share. A card with text
+measurements and none for documents checks a .docx or PDF against its text block, and the reverse; the
+report then says `(against the card's text measurements)`, and only the writing dimensions take part.
 
 Reading a row: `OFF Shot length [core]: 0.9 against 1.4 to 5.8 s (too low)`. The fix is in the work, not the
 card: longer holds, fewer cuts. Widening the card to make a draft pass defeats the check. Each dimension
@@ -45,24 +48,29 @@ Run against every reference in `fingerprints.json`.
 | order | the new work's sequence correlates with the reference's at r 0.5 or more, and fewer than 2% of 300 shuffles of the new work do as well (p 0.02 or less) | following the reference's structure, even with all-new material |
 | frames and images | a frame or image whose dHash is close (12 bits) and whose 16x16 grey layout correlates at 0.9 or more with a reference frame. Video: 20% of shots and at least 2. Images: any one | reused footage, traced or recoloured images, the same composition |
 | audio | 8 or more consecutive seconds whose 24-band profile (each one-second window against its own average, less the reference's average profile so the tilt all music shares does not count) matches reference windows in step, at cosine 0.92; the reference is fingerprinted every quarter second, so an excerpt cut from anywhere, off the second grid and re-encoded, still lines up; every matching window counts, not only the closest, so loops and repeated choruses keep the run going; silent seconds ignored | reused recordings, stems, excerpts and loops |
-| text | a shared run of 12 English words or 40 Thai characters, or 5% of the new text's 8-word (15-character) shingles found in the reference; run in the reference's language, so Thai pasted into English text is still found | copied sentences |
+| text | a shared run of 12 English words or 40 Thai characters, or 5% of the new text's 8-word (15-character) shingles found in the reference; run in the reference's language, so Thai pasted into English text is still found. Between any two of text, documents, slides and sheets; in a sheet, only runs inside one cell count, so a shared header row (January to December) is not a copy | copied sentences, slide copy, notes in cells |
+| pictures | a picture inside a deck, document or sheet that is one of the reference's own files byte for byte; or, with numpy and ffmpeg, one whose dHash and grey layout match a reference picture, frame or image as above. Without numpy a warning says pictures were compared by their bytes only | reused photos, icons and illustrations, re-saved or resized |
 | names | a `forbid` name in new text | the reference's brand or characters |
-| palette (warning) | every chromatic colour of the new work within delta E 6 of one of the reference's, and the reference's within 6 of the new work's on average | same colour set: fine for a look, not for a brand |
+| palette (warning) | every chromatic colour of the new work within delta E 6 of one of the reference's, and the reference's within 6 of the new work's on average; images and video against images and video, a deck against a deck, a document against a document | same colour set: fine for a look, not for a brand |
 
-**How the order test works.** Each unit (shot, paragraph, second, image) carries a few features (length,
-light, contrast, movement, colour; or length, sentence count, questions, list, heading, numbers; or level,
-tone, noise, onsets). Both sequences are stretched onto 32 points of a 0 to 1 timeline, weighted by
+**How the order test works.** Each unit (shot, paragraph, second, image, slide, block, sheet) carries a
+few features (length, light, contrast, movement, colour; or length, sentence count, questions, list,
+heading, numbers; or level, tone, noise, onsets; or a slide's text, bullets, pictures, fill, background and
+title; a block's length, heading, list, table, size and bold; a sheet's columns, rows, numbers, formulas,
+charts and header). Both sequences are stretched onto 32 points of a 0 to 1 timeline, weighted by
 duration, and their overall arc (a quadratic trend) is removed: a shared "builds to the end" shape is
 style. The rest is correlated feature by feature. Then the new work's own units are shuffled 300 times;
 if the true order beats almost all shuffles, the new work follows the reference. Fewer than 5 units on
-either side: no verdict (a warning says so).
+either side: no verdict (a warning says so). Between two written media (Markdown against Word, a PDF
+against a deck) the test compares the paragraphs the text route reads on both sides, so saving a
+same-order rewrite in another format does not get it past.
 
 ## When it fails
 
 - **Order.** Rebuild the structure from the subject: list the parts the subject needs, in the order it
   needs them, then fit the style to that. Moving two sections around is not enough if the rest still follows.
-- **Frames or images.** Replace the flagged footage or image with new material. A recolour, crop or
-  re-encode of the reference is still the reference.
+- **Frames, images or pictures.** Replace the flagged footage, image or picture with new material. A
+  recolour, crop or re-encode of the reference is still the reference.
 - **Audio.** Replace the matched stretch with new music or sound; a remix of the reference's stems counts
   as reuse.
 - **Text.** Rewrite the flagged run in your own words; quote at most a few words, and only with credit.

@@ -16,8 +16,19 @@ SCHEMA_FP = "style-study/fingerprints-1"
 VIDEO_EXT = {".mp4", ".mov", ".m4v", ".mkv", ".webm", ".avi", ".gif"}
 IMAGE_EXT = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
 AUDIO_EXT = {".wav", ".mp3", ".m4a", ".aac", ".flac", ".ogg", ".opus", ".aiff", ".aif"}
-TEXT_EXT = {".txt", ".md", ".markdown", ".srt", ".vtt", ".html", ".htm", ".rst"}
-MEDIA = ("video", "image", "audio", "text")
+TEXT_EXT = {".txt", ".md", ".markdown", ".srt", ".vtt", ".html", ".htm", ".xhtml", ".rst", ".org", ".adoc", ".asciidoc",
+            ".tex", ".eml"}
+# documents: read directly (OOXML, OpenDocument, EPUB, RTF, CSV), through pypdf or pdftotext (PDF), or converted
+# first with LibreOffice or macOS textutil (older binary formats, Apple iWork and other word processors)
+SLIDES_EXT = {".pptx", ".pptm", ".potx", ".potm", ".ppsx", ".ppsm", ".odp", ".otp", ".fodp", ".ppt", ".pps", ".pot",
+              ".key", ".sxi"}
+DOC_EXT = {".docx", ".docm", ".dotx", ".dotm", ".odt", ".ott", ".fodt", ".rtf", ".epub", ".pdf", ".doc", ".dot",
+           ".pages", ".wpd", ".wps", ".abw", ".hwp", ".sxw", ".wordml", ".webarchive"}
+SHEET_EXT = {".xlsx", ".xlsm", ".xltx", ".xltm", ".ods", ".ots", ".fods", ".csv", ".tsv", ".xls", ".xlt", ".numbers",
+             ".sxc"}
+MEDIA = ("video", "image", "audio", "text", "slides", "document", "sheet")
+WRITING = ("text", "document", "slides")  # media whose words are measured as writing
+WORDED = ("text", "document", "slides", "sheet")  # media whose words are fingerprinted for the copy check
 
 
 class StyleError(Exception):
@@ -34,6 +45,12 @@ def kind_of(path):
         return "audio"
     if ext in TEXT_EXT:
         return "text"
+    if ext in SLIDES_EXT:
+        return "slides"
+    if ext in DOC_EXT:
+        return "document"
+    if ext in SHEET_EXT:
+        return "sheet"
     return None
 
 

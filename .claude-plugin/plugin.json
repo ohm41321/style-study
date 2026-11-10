@@ -1,7 +1,7 @@
 {
   "name": "style-study",
-  "version": "1.1.0",
-  "description": "Learn the style of reference works (video, images, music, Thai and English writing) and design new work in it, with a two-sided check that proves it is not a copy.",
+  "version": "1.2.0",
+  "description": "Learn the style of reference works (video, images, music, Thai and English writing, slide decks, documents, spreadsheets) and design new work in it, with a two-sided check that proves it is not a copy.",
   "icon": "./.claude-plugin/icon.jpg",
   "author": {
     "name": "ohm41321",
@@ -16,6 +16,9 @@
     "video",
     "music",
     "writing",
+    "slides",
+    "documents",
+    "spreadsheets",
     "thai",
     "copy-check"
   ]

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """style-study: learn a reference's style, never its pattern, and design new work from it.
 
-  measure FILE...            measure references (video, image, audio or text; one medium per call)
+  measure FILE...            measure references (one medium per call: video, image, audio, text, slides,
+                             document or sheet)
   card MEASURES...           pool measurements into style.json (ranges, axes) + fingerprints.json (copy check data)
   lint CARD                  the pattern firewall: timestamps, positions, quotes, names, thin evidence
   render CARD                write the card as Markdown for people and other skills
@@ -9,7 +10,8 @@
   check NEW... --card CARD   two-sided: style close enough, pattern far enough
   sheet VIDEO                contact sheet (one frame per shot) to read habits from
 
-The text route needs only Python 3.9+. Video, image and audio need numpy and ffmpeg.
+The text, slides, document and sheet routes need only Python 3.9+ (PDF also needs pypdf or poppler; older
+and Apple formats need LibreOffice). Video, image and audio need numpy and ffmpeg.
 Exit codes: 0 ok, 1 check or lint failed (or the pattern side could not run), 2 usage or input problem.
 """
 
@@ -30,7 +32,7 @@ def group(files, medium=None):
     kinds = {f: (medium or kind_of(f)) for f in files}
     unknown = [f for f, k in kinds.items() if k is None]
     if unknown:
-        raise StyleError(f"unknown file type: {', '.join(unknown)} (pass --medium video|image|audio|text)")
+        raise StyleError(f"unknown file type: {', '.join(unknown)} (pass --medium {'|'.join(MEDIA)})")
     found = set(kinds.values())
     if len(found) > 1:
         raise StyleError(f"one medium per call, got {sorted(found)}; measure each medium separately and pass all "
@@ -45,6 +47,11 @@ def measure_files(files, medium, max_seconds):
         for f in files:
             info, values, fp, _ = ss_text.measure_text(f)
             refs.append({"file": os.path.basename(f), "info": info, "values": values, "fp": fp})
+    elif medium in ("slides", "document", "sheet"):
+        import ss_docs
+        for f in files:
+            info, values, fp, text = ss_docs.measure(f, medium)
+            refs.append({"file": os.path.basename(f), "info": info, "values": values, "fp": fp, "_text": text})
     elif medium == "image":
         import ss_media
         info, values, fp = ss_media.measure_images(files)
@@ -62,6 +69,8 @@ def measure_files(files, medium, max_seconds):
 def cmd_measure(a):
     medium = group(a.files, a.medium)
     ms = measure_files(a.files, medium, a.max_seconds)
+    for r in ms["refs"]:
+        r.pop("_text", None)  # the words stay out of measures.json; only their hashes are kept
     save_json(ms, a.out)
     if a.out not in (None, "-"):
         for r in ms["refs"]:
@@ -147,6 +156,8 @@ def cmd_check(a):
     if medium == "text":
         import ss_text
         texts = [ss_text.clean_markdown(ss_text.read_text(f)) for f in a.files]
+    elif medium in ("slides", "document", "sheet"):
+        texts = [r["_text"] for r in ms["refs"]]
     findings, warnings, gaps = [], [], []
     for name, r, text in zip(names, ms["refs"], texts):
         p = ss_check.pattern_side(card, fps, medium, r["fp"], text, r["info"].get("lang"))
@@ -215,7 +226,7 @@ def main(argv=None):
 
     p = sub.add_parser("brief", help="write a design brief for new work")
     p.add_argument("card")
-    p.add_argument("--for", dest="target", required=True, help="video, audio, text, image, slides, ui or any")
+    p.add_argument("--for", dest="target", required=True, help="video, audio, text, image, slides, document, sheet, ui or any")
     p.add_argument("--subject", help="what the new work is about")
     p.add_argument("-o", "--out", default="brief.md")
     p.set_defaults(fn=cmd_brief)

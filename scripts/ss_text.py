@@ -37,9 +37,21 @@ CHUNK = 10  # sentences per window for rates
 
 
 def read_text(path):
+    from ss_common import kind_of
+    if kind_of(path) in ("slides", "document", "sheet"):
+        import ss_docs
+        return ss_docs.prose_of(path)
+    low = path.lower()
+    if low.endswith(".eml"):
+        return email_text(path)
     with open(path, encoding="utf-8", errors="replace") as f:
         raw = f.read()
-    low = path.lower()
+    if low.endswith(".tex"):
+        return tex_text(raw)
+    if low.endswith(".org"):
+        return re.sub(r"(?m)^(\*+)\s", lambda m: "#" * min(6, len(m.group(1))) + " ", raw)
+    if low.endswith((".adoc", ".asciidoc")):
+        return re.sub(r"(?m)^(=+)\s", lambda m: "#" * min(6, len(m.group(1))) + " ", raw)
     if low.endswith((".srt", ".vtt")):
         keep = []
         for line in raw.splitlines():
@@ -51,15 +63,44 @@ def read_text(path):
             else:
                 keep.append(re.sub(r"<[^>]+>", "", s))
         return "\n".join(keep)
-    if low.endswith((".html", ".htm")):
-        raw = re.sub(r"(?is)<(script|style|noscript)[^>]*>.*?</\1>", " ", raw)
-        raw = re.sub(r"(?i)<br\s*/?>", "\n", raw)
-        raw = re.sub(r"(?i)<h([1-6])[^>]*>", lambda m: "\n\n" + "#" * int(m.group(1)) + " ", raw)
-        raw = re.sub(r"(?i)<li[^>]*>", "\n- ", raw)
-        raw = re.sub(r"(?i)</(p|div|h[1-6]|ul|ol|section|article|blockquote)>", "\n\n", raw)
-        raw = re.sub(r"<[^>]+>", " ", raw)
-        raw = html.unescape(raw)
+    if low.endswith((".html", ".htm", ".xhtml")):
+        raw = html_text(raw)
     return raw
+
+
+def html_text(raw):
+    """HTML as the Markdown-like text the measures read: headings, list items and paragraphs kept apart."""
+    raw = re.sub(r"(?is)<(script|style|noscript|head)[^>]*>.*?</\1>", " ", raw)
+    raw = re.sub(r"(?i)<br\s*/?>", "\n", raw)
+    raw = re.sub(r"(?i)<h([1-6])[^>]*>", lambda m: "\n\n" + "#" * int(m.group(1)) + " ", raw)
+    raw = re.sub(r"(?i)<li[^>]*>", "\n- ", raw)
+    raw = re.sub(r"(?i)</(p|div|h[1-6]|ul|ol|section|article|blockquote|tr|table)>", "\n\n", raw)
+    raw = re.sub(r"<[^>]+>", " ", raw)
+    return html.unescape(raw)
+
+
+def tex_text(raw):
+    raw = re.sub(r"(?m)(?<!\\)%.*$", "", raw)
+    raw = re.sub(r"(?s)\\begin\{(equation|align|figure|table|tabular|verbatim)\*?\}.*?\\end\{\1\*?\}", "\n", raw)
+    raw = re.sub(r"\$\$.*?\$\$|\$[^$]*\$", " ", raw, flags=re.S)
+    raw = re.sub(r"\\(chapter|section)\*?\{([^}]*)\}", r"\n\n# \2\n\n", raw)
+    raw = re.sub(r"\\(subsection|subsubsection|paragraph)\*?\{([^}]*)\}", r"\n\n## \2\n\n", raw)
+    raw = re.sub(r"\\item\s*", "\n- ", raw)
+    raw = re.sub(r"\\(begin|end)\{[^}]*\}", "\n", raw)
+    raw = re.sub(r"\\[a-zA-Z]+\*?(\[[^\]]*\])?(\{([^{}]*)\})?", lambda m: m.group(3) or " ", raw)
+    return raw.replace("{", "").replace("}", "").replace("~", " ")
+
+
+def email_text(path):
+    import email
+    from email import policy
+    with open(path, "rb") as f:
+        msg = email.message_from_binary_file(f, policy=policy.default)
+    part = msg.get_body(preferencelist=("plain", "html"))
+    if part is None:
+        return ""
+    body = part.get_content()
+    return html_text(body) if part.get_content_type() == "text/html" else body
 
 
 def clean_markdown(text):
@@ -178,10 +219,18 @@ def mattr(words, window=50):
     return sum(vals) / len(vals)
 
 
+def text_units(s, lang):
+    """Length in the unit sentences use: words in English, characters without spaces in Thai."""
+    return len(re.sub(r"\s", "", s)) if lang == "th" else len(WORD.findall(s))
+
+
 def measure_text(path):
-    raw = read_text(path)
+    return measure_string(read_text(path), path)
+
+
+def measure_string(raw, path, lang=None):
     text = clean_markdown(raw)
-    lang = language(text)
+    lang = lang or language(text)
     blocks = blocks_of(text)
     sents, para_rows = [], []
     for b in blocks:

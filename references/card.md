@@ -30,13 +30,13 @@ its rendering, and `brief.md`). `style.py card` fills the measured part; you wri
 ```
 
 Keys `style.py` writes: `schema`, `name`, `made`, `references` (bare file names only, never paths),
-`measured`, `lang`, `axes`. Keys you write: `traits`, `avoid`, `forbid`, `notes`. Do not add other keys
+`measured`, `lang` (per medium that has words: text, slides, document, sheet), `axes`. Keys you write: `traits`, `avoid`, `forbid`, `notes`. Do not add other keys
 under `measured`: a card keeps ranges, never per-unit lists. Lint refuses both.
 
 ### measured
 
 Per medium, per dimension: `p10`, `p50` and `p90` of every unit pooled across references (shots, sentences,
-seconds, images), with `n` units from `refs` references. `confidence` is `high` with 30 or more units from two
+seconds, images, slides, paragraphs, sheets), with `n` units from `refs` references. `confidence` is `high` with 30 or more units from two
 or more references, `medium` with 10 or more units, otherwise `low`. For values measured once per reference
 (loudness, tempo), it counts references: three or more is `high`. A `low` range is a hint, not a target.
 

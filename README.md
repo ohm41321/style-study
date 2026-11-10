@@ -4,7 +4,8 @@
 
 <p align="center">
   An agent skill for making new work in the style of something you admire, without copying it.<br>
-  Film, images, music and sound, Thai and English writing, and any other medium by hand.
+  Film, images, music and sound, Thai and English writing, slide decks, Word and PDF documents,<br>
+  spreadsheets, and any other medium by hand.
 </p>
 
 <p align="center">
@@ -58,6 +59,7 @@ Each step is one command. Run them from the skill folder, or ask your agent and 
 # 1. measure: one medium per call, several references is better than one
 python3 scripts/style.py measure ref1.mp4 ref2.mp4 -o measures-video.json
 python3 scripts/style.py measure post1.md post2.md post3.md -o measures-text.json
+python3 scripts/style.py measure deck1.pptx deck2.key -o measures-slides.json
 
 # 2. card: pool the numbers, write the habits by hand, lint until clean
 python3 scripts/style.py card measures-*.json -o style.json --fingerprints fingerprints.json
@@ -105,9 +107,9 @@ pace, a UI transition or a song's arrangement. See [`references/translate.md`](r
 dimensions in range and no core dimension off.
 
 **Pattern side.** Same order as the reference (a permutation test with the overall arc removed),
-near-duplicate frames or images (a difference hash plus a layout match), reused audio (excerpts and loops
-included), shared runs of text
-in the reference's own language, and any forbidden name. A palette that matches the reference is a
+near-duplicate frames or images (a difference hash plus a layout match), the reference's own pictures
+inside a deck or document (by bytes, or re-saved and resized), reused audio (excerpts and loops
+included), shared runs of text in the reference's own language, and any forbidden name. A palette that matches the reference is a
 warning: fine for a look, not for a brand.
 
 Both must pass, and a check that could not run in full is never a pass. This is real output from the self-test's synthetic films: a new cut in its own order passes,
@@ -123,14 +125,18 @@ Thresholds, false alarms and what to do about each failure: [`references/check.m
 
 | Medium | Files | Measures | Needs |
 |---|---|---|---|
-| text | .md .txt .html .srt .vtt | sentence and paragraph rhythm, questions, person, Thai endings, English mixing, lists | Python 3.9+ |
+| text | .md .txt .html .srt .vtt .rst .tex .eml | sentence and paragraph rhythm, questions, person, Thai endings, English mixing, lists | Python 3.9+ |
+| slides | .pptx .odp and templates; .key .ppt .pps via LibreOffice; a PDF with `--medium slides` | text and bullets per slide, elements, pictures, fill, title and body size, background, contrast, typefaces, colours, plus the writing | Python 3.9+ (pypdf or poppler for PDF) |
+| document | .docx .odt .rtf .epub .pdf and templates; .doc .pages .wpd .wps .hwp via LibreOffice or macOS textutil | the writing, plus body size, heading ratio, line and paragraph spacing, margins, bold, italic, justified, pictures, tables, text per page | Python 3.9+ (pypdf or poppler for PDF) |
+| sheet | .xlsx .ods .csv .tsv and templates; .xls .numbers via LibreOffice | columns, rows, numbers, formulas, decimals, header styling, merged cells, charts, label length, type, colours | Python 3.9+ |
 | video | .mp4 .mov .mkv .webm .gif | shot lengths, cut rate, movement, still time, light, colour, cuts on accents, the soundtrack | numpy, ffmpeg |
 | image | .png .jpg .webp .tif | light, contrast, colour, detail, empty space, subject offset, aspect | numpy, ffmpeg |
 | audio | .wav .mp3 .m4a .flac .ogg | loudness (EBU R128), range, tempo, onsets, quiet time, tone, bands, width | numpy, ffmpeg |
-| anything else | UI, slides, 3D, fashion, spaces, code style | the same card, written by hand | nothing |
+| anything else | UI, websites, 3D, fashion, spaces, code style | the same card, written by hand | nothing |
 
-Brief targets: `video`, `audio`, `text`, `image`, `slides`, `ui`, `any`. What each number means and
-where it is weak: [`references/mediums.md`](references/mediums.md).
+Brief targets: `video`, `audio`, `text`, `image`, `slides`, `document`, `sheet`, `ui`, `any`. Office files
+are read as data: no macro runs, and oversized or entity-laden files are refused. What each number means
+and where it is weak: [`references/mediums.md`](references/mediums.md).
 
 ## Install
 
@@ -158,12 +164,15 @@ git clone https://github.com/ohm41321/style-study.git ~/.claude/skills/style-stu
 git clone https://github.com/ohm41321/style-study.git ~/.agents/skills/style-study   # Codex
 ```
 
-Writing needs nothing else: Python 3.9 or later is enough. Video, images and audio also need `ffmpeg` and
-numpy:
+Writing, decks, documents and sheets need nothing else: Python 3.9 or later is enough. PDF needs pypdf (or
+poppler's `pdftotext`), and older or Apple formats (.ppt, .doc, .xls, .key, .pages, .numbers) need
+LibreOffice. Video, images and audio also need `ffmpeg` and numpy, which also let the check spot a
+reference's picture re-saved inside a deck:
 
 ```sh
-brew install ffmpeg            # macOS; on Debian or Ubuntu: sudo apt install ffmpeg
-python3 -m pip install numpy   # if pip refuses: python3 -m venv .venv && .venv/bin/pip install numpy
+brew install ffmpeg                  # macOS; on Debian or Ubuntu: sudo apt install ffmpeg
+python3 -m pip install numpy pypdf   # if pip refuses: python3 -m venv .venv && .venv/bin/pip install numpy pypdf
+brew install --cask libreoffice      # only for .ppt .doc .xls .key .pages .numbers
 ```
 
 The agent knows the venv route too and sets it up itself when `python3` has no numpy. Then ask in plain
@@ -173,23 +182,28 @@ words:
 
 > This essay is in the style of my references. Is it too close to any of them?
 
+> Learn the look of these three decks and make a new deck for our Q3 review in that style.
+
 ## Self-test
 
 ```sh
 python3 scripts/check-skill.py
 ```
 
-56 checks with known answers: a synthetic film with a known edit, click tracks with a known tempo and
+96 checks with known answers: a synthetic film with a known edit, click tracks with a known tempo and
 onsets, a track, an excerpt cut from its middle and an excerpt of a loop, images whose empty space and
-subject offset move a known way, English and Thai texts, copies and same-order remakes that must fail,
-siblings that must pass, and a card for every lint rule that must be refused. Run it with a Python that has
-numpy to include the media routes.
+subject offset move a known way, English and Thai texts, decks, documents and sheets in every format the
+skill reads directly (sizes through masters, layouts and style chains, theme colours, spacing, margins,
+numbers, a Thai RTF code page, PDF text inside scaled forms), copies and same-order remakes that must
+fail, siblings that must pass, and a card for every lint rule that must be refused. Run it with a Python
+that has numpy and pypdf to include the media routes and PDF; with plain `python3` it runs 74 and skips
+the rest.
 
 ## Limits
 
 - The numbers describe the surface of a style. Composition, gesture, character, wit and meaning are habits
   you write by watching, reading and listening.
-- The pattern check catches order, near-duplicate frames, reused audio and shared text. It does not catch
+- The pattern check catches order, near-duplicate frames and pictures, reused audio and shared text. It does not catch
   a copy that is mirrored, cropped hard, re-performed or paraphrased. Look as well.
 - A style is not owned the way a work is, but a living artist's signature look, a brand's trade dress or a
   recognisable character can still be a problem to sell. This is not legal advice.
@@ -208,7 +222,8 @@ numpy to include the media routes.
 npx skills add ohm41321/style-study -g
 ```
 
-งานเขียนใช้ได้ทันที ส่วนวิดีโอ ภาพ และเสียง ต้องมี `ffmpeg` กับ numpy ด้วย (agent ติดตั้ง numpy ให้เองได้)
+งานเขียน สไลด์ เอกสาร Word และตาราง Excel ใช้ได้ทันที PDF ต้องมี pypdf ไฟล์รุ่นเก่าหรือของ Apple (.ppt .doc .xls .key .pages .numbers)
+ต้องมี LibreOffice ส่วนวิดีโอ ภาพ และเสียง ต้องมี `ffmpeg` กับ numpy ด้วย (agent ติดตั้ง numpy ให้เองได้)
 
 <details>
 <summary>style-study คืออะไร และใช้ยังไง</summary>
@@ -227,7 +242,7 @@ npx skills add ohm41321/style-study -g
 ไฟล์แบ่งเป็นสองโต๊ะ: ฝั่งตรวจเก็บไฟล์ต้นแบบ `measures*.json` และ `fingerprints.json` ฝั่งทำงานเห็นแค่ `style.md` กับ `brief.md`
 
 พิมพ์สั่ง agent ได้เลย เช่น "ศึกษาสไตล์", "ถอดสไตล์", "อยากได้โทนแบบนี้", "ทำให้ฟีลเหมือนงานนี้",
-"ออกแบบงานใหม่ตามสไตล์", "ไม่ก็อป", "เหมือนต้นฉบับเกินไปไหม"
+"ทำสไลด์สไตล์นี้", "ออกแบบงานใหม่ตามสไตล์", "ไม่ก็อป", "เหมือนต้นฉบับเกินไปไหม"
 
 รองรับภาษาไทยเต็มที่: วัดคำลงท้าย สรรพนาม การปนภาษาอังกฤษ และตรวจข้อความซ้ำด้วยภาษาของต้นฉบับ
 

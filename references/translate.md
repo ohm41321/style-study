@@ -5,17 +5,17 @@ from a film steer a deck, a song, a page or an interface. Each axis has three ba
 
 | Axis | Bands | Read from (first one the card has) |
 |---|---|---|
-| tempo | slow, medium, fast | shot length (fast under 1.5 s, slow over 3.5 s); sentence length (English: fast under 10 words, slow over 18; Thai: under 35, over 70 characters); tempo (slow under 90, fast over 120 BPM); soundtrack tempo |
-| energy | calm, lively, busy | movement (2 and 6 grey levels); onsets (1.5 and 4 per s); detail (0.04 and 0.09); exclamations (2% and 10%) |
-| variation | even, moderate, wide | p90 over p10 of shot length or sentence length (2.5 and 4); level swing (4 and 9 dB); p90 over p10 of brightness (1.4 and 2.2) |
-| brightness | dark, mid, bright | brightness (0.35 and 0.60); spectral centroid (1.2 and 2.6 kHz) |
-| contrast | soft, medium, hard | contrast (0.15 and 0.25); peak to loudness (9 and 14 dB) |
-| color | muted, moderate, vivid | saturation (0.20 and 0.40) |
+| tempo | slow, medium, fast | shot length (fast under 1.5 s, slow over 3.5 s); text per slide (English: fast under 15 words, slow over 40; Thai: under 60, over 160 characters); sentence length (English: fast under 10 words, slow over 18; Thai: under 35, over 70 characters); tempo (slow under 90, fast over 120 BPM); soundtrack tempo |
+| energy | calm, lively, busy | movement (2 and 6 grey levels); onsets (1.5 and 4 per s); detail (0.04 and 0.09); elements per slide (2.5 and 4.5); exclamations (2% and 10%) |
+| variation | even, moderate, wide | p90 over p10 of shot length (2.5 and 4); level swing (4 and 9 dB); p90 over p10 of text per slide or sentence length (2.5 and 4); p90 over p10 of brightness (1.4 and 2.2) |
+| brightness | dark, mid, bright | brightness (0.35 and 0.60); slide background brightness (0.35 and 0.60); spectral centroid (1.2 and 2.6 kHz) |
+| contrast | soft, medium, hard | contrast (0.15 and 0.25); peak to loudness (9 and 14 dB); title or heading size against body (1.5 and 2.5) |
+| color | muted, moderate, vivid | saturation (0.20 and 0.40); saturation of the colours a deck, document or sheet uses (0.25 and 0.50) |
 | warmth | cool, neutral, warm | warm share (0.35 and 0.60) |
-| space | dense, balanced, airy | empty space (0.30 and 0.55); still time (0.15 and 0.40); quiet time (0.05 and 0.20); sentences per paragraph (airy under 2.5, dense over 5) |
+| space | dense, balanced, airy | empty space (0.30 and 0.55); still time (0.15 and 0.40); quiet time (0.05 and 0.20); slide area covered (airy under 0.35, dense over 0.6); side margins (0.20 and 0.30 of the page); sentences per paragraph (airy under 2.5, dense over 5); columns per sheet (airy under 6, dense over 15) |
 
-Where a card has several sources for an axis, the order is video, image, audio, text, and within a medium
-the order in the table. The rendered card says which dimension each band came from.
+Where a card has several sources for an axis, the order is video, image, audio, text, slides, document,
+sheet, and within a medium the order in the table. The rendered card says which dimension each band came from.
 
 ## Starting points per target
 

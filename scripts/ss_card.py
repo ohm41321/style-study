@@ -5,11 +5,11 @@ import math
 import os
 import re
 
-from ss_common import SCHEMA_CARD, SCHEMA_FP, StyleError, summary
-from ss_dims import BANDS3, DIMS, MEDIUM_DIMS, TARGETS, axes_of, spec, translate
+from ss_common import MEDIA, SCHEMA_CARD, SCHEMA_FP, WORDED, WRITING, StyleError, summary
+from ss_dims import BANDS3, DIMS, LANG_UNIT, MEDIUM_DIMS, TARGETS, axes_of, spec, translate
 
 MEASURED_KEYS = {"label", "unit", "p10", "p50", "p90", "n", "refs", "confidence"}
-INFO_KEYS = ("units", "unit", "seconds", "lang", "fps", "width", "height", "aspect", "audio")
+INFO_KEYS = ("units", "unit", "seconds", "lang", "fps", "width", "height", "aspect", "audio", "pages")
 
 
 def confidence(n, refs, single):
@@ -35,10 +35,10 @@ def build(measure_sets, name):
             info = {k: ref["info"][k] for k in INFO_KEYS if k in ref["info"]}
             card["references"].append({"id": rid, "medium": medium, "file": os.path.basename(ref["file"]), **info})
             fps["refs"].append({"id": rid, "medium": medium, "lang": ref["info"].get("lang"), "fp": ref["fp"]})
-            if medium == "text":
-                card["lang"].setdefault("text", ref["info"].get("lang"))
-                if ref["info"].get("lang") != card["lang"]["text"]:
-                    raise StyleError("text references mix Thai and English; make one card per language")
+            if medium in WORDED:
+                card["lang"].setdefault(medium, ref["info"].get("lang"))
+                if medium in WRITING and ref["info"].get("lang") != card["lang"][medium]:
+                    raise StyleError(f"{medium} references mix Thai and English; make one card per language")
             for dim, vals in ref["values"].items():
                 pooled.setdefault(medium, {}).setdefault(dim, []).append(vals)
     for medium, dims in pooled.items():
@@ -53,8 +53,8 @@ def build(measure_sets, name):
                 continue
             sp = spec(dim)
             unit = sp["unit"]
-            if dim == "sentence_length":
-                unit = "characters" if card["lang"].get("text") == "th" else "words"
+            if dim in LANG_UNIT:
+                unit = "characters" if card["lang"].get(medium) == "th" else "words"
             single = all(len(v) == 1 for v in per_ref)
             out[dim] = {"label": sp["label"], "unit": unit, "p10": s["p10"], "p50": s["p50"], "p90": s["p90"],
                         "n": s["n"], "refs": len(per_ref), "confidence": confidence(s["n"], len(per_ref), single)}
@@ -65,11 +65,11 @@ def build(measure_sets, name):
 
 def all_axes(card):
     out = {}
-    for medium in ("video", "image", "audio", "text"):
+    for medium in MEDIA:
         m = card["measured"].get(medium)
         if not m:
             continue
-        for axis, v in axes_of(m, card.get("lang", {}).get("text")).items():
+        for axis, v in axes_of(m, card.get("lang", {}).get(medium)).items():
             if axis not in out:
                 out[axis] = {**v, "medium": medium}
     return out
@@ -183,8 +183,8 @@ def lint(card, fingerprints=None):
     lang = (card.get("lang") or {}).get("text")
     ref_sh = {}
     for r in (fingerprints or {}).get("refs", []):
-        if r.get("medium") == "text":
-            ref_sh.setdefault(r.get("lang") or "en", set()).update(r["fp"].get("shingles", []))
+        if r["fp"].get("shingles"):  # text, and the words of slides, documents and sheets
+            ref_sh.setdefault(r.get("lang") or "en", set()).update(r["fp"]["shingles"])
     for where, text in text_fields(card):
         if CLOCK.search(text) or AT_TIME.search(text):
             errors.append(f"{where}: names a time in the reference; a style is a rate or a habit, not a timestamp")
@@ -285,7 +285,7 @@ def freedoms(card, medium):
 
 
 NOUNS = {"video": "video", "audio": "piece of audio", "text": "piece of writing", "image": "image or image set",
-         "slides": "slide deck", "ui": "interface", "any": "work"}
+         "slides": "slide deck", "document": "document", "sheet": "spreadsheet", "ui": "interface", "any": "work"}
 
 
 def article(noun):
@@ -350,9 +350,12 @@ def brief(card, target, subject=None):
             out.append(f"- The style has the most room in {' and '.join(labels)}: push one of them to an edge of its range on purpose.")
     out += ["- Keep the habits; vary everything the habits do not mention.", "",
             "## 7. Check before handing it over", ""]
-    if target in ("video", "audio", "text", "image"):
-        out += ["```sh", f"python3 scripts/style.py check NEW_WORK --card style.json --fingerprints fingerprints.json", "```", "",
-                "The check passes only when the style is close enough and the pattern is far enough. Show the result to the person;",
+    if target in MEDIA:
+        extra = " --medium slides" if target == "slides" else ""
+        out += ["```sh", f"python3 scripts/style.py check NEW_WORK --card style.json --fingerprints fingerprints.json{extra}", "```", ""]
+        if target == "slides":
+            out += ["`--medium slides` matters only for a deck exported to PDF, which is otherwise read as a document.", ""]
+        out += ["The check passes only when the style is close enough and the pattern is far enough. Show the result to the person;",
                 "the measurements do not replace their eyes and ears."]
     else:
         out += [f"There is no measuring route for {target}: review the work against sections 3-5 by eye, and confirm with the",

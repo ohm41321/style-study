@@ -1,6 +1,6 @@
 # Mediums: what is measured, and where it is weak
 
-Every number is a distribution over units (shots, sentences, seconds, images), pooled across references
+Every number is a distribution over units (shots, sentences, seconds, images, slides, paragraphs, sheets), pooled across references
 into p10, p50 and p90. More references and longer references give tighter, more honest ranges: one 30 s
 clip is a hint; three pieces of a few minutes each is a style.
 
@@ -89,9 +89,97 @@ project (often mastered to the same level, at the same tempo) give the card a ra
 those, so the tolerance decides, and a cheerful pop track can pass while another score fails. Study three
 to five pieces that differ, and judge mood and instrumentation by ear.
 
+## Documents: how files are read
+
+Slides, documents and sheets need Python only. The files are read as data: OOXML (.pptx, .docx, .xlsx and
+their macro and template forms), OpenDocument (zipped or flat XML), EPUB, RTF and CSV are parsed directly;
+no macro runs. A zip part over 64 MB, a file over 512 MB unpacked (each part counted once), or XML with a DTD or
+entities in any encoding is refused, so a crafted file cannot exhaust memory. A sheet is read up to 200,000 cells.
+
+| Format | How |
+|---|---|
+| .pptx .docx .xlsx and kin | the XML, with styles resolved: slide master, layout, placeholder and theme for decks; the style chain and document defaults for Word |
+| .odp .odt .ods and flat .fodp .fodt .fods | the XML, with named and automatic styles |
+| .epub | the XHTML chapters in spine order, as prose; tables are left out of the prose |
+| .rtf | a small RTF reader: paragraphs, sizes, bold, italic, tables, pictures, margins, Thai and other code pages |
+| .csv .tsv | cells and numbers only, no formatting |
+| .pdf | pypdf for text, sizes, typefaces and pictures; poppler's `pdftotext` for text alone when pypdf is missing |
+| .ppt .pps .pot .key .sxi, .doc .dot .pages .wpd .wps .abw .hwp .sxw, .xls .xlt .numbers .sxc | converted first by LibreOffice (`soffice --headless`, with a throwaway profile); `.doc`, `.dot`, `.wordml` and `.webarchive` fall back to macOS `textutil` |
+
+Pictures inside a file are fingerprinted for the check: the bytes (a hash), and, with numpy and ffmpeg, how
+they look, so a picture re-saved or re-compressed is still found. SVG, EMF and WMF are compared by bytes
+only.
+
+## slides
+
+One unit is one slide. Hidden slides, speaker notes and the date, footer and slide-number placeholders
+are not measured; the words and pictures of hidden slides still go to the copy check, so hiding a copied
+slide does not hide it. The writing on the slides is
+also measured with the text dimensions, in the deck's language.
+
+| Dimension | How |
+|---|---|
+| Text per slide | words (English) or characters without spaces (Thai), titles included |
+| Bullets, elements, pictures per slide | bullet paragraphs outside the title; shapes with text or a fill, pictures, tables and charts; pictures alone |
+| Slide area covered | share of a 40x40 grid under any element's box. A filled shape without text over 90% of the slide counts as the background, not as an element |
+| Title size, body size, title to body | in points, after PowerPoint's shrink-on-overflow scale; body is the commonest size outside the title |
+| Background brightness, text contrast | the slide, layout or master fill (a picture fill leaves it unmeasured); median WCAG contrast of text colour against it |
+| Typefaces, colours, saturation | faces used across the deck (theme fonts resolved); chromatic colours in text, fills and lines, clustered |
+| Aspect | slide width over height |
+
+A PDF deck (`--medium slides`) gives text, bullets, sizes and pictures per page; it has no boxes, so no
+fill, elements or background. Weak spots: autofit is applied as PowerPoint last saved it, so a deck that
+was never opened in PowerPoint after editing can read larger type than it shows; text drawn in pictures is
+invisible; animations, transitions and speaker notes are not measured. Layout grids, alignment, icon style
+and how a deck builds an argument are traits: look at the slides.
+
+## document
+
+One unit is one sentence for the writing dimensions (as in text) and one paragraph or page for the layout
+dimensions. Headings, lists and tables are told apart from body paragraphs.
+
+| Dimension | How |
+|---|---|
+| Every text dimension | the prose of the document: headings, body and lists, without tables |
+| Body size, heading to body | points; the commonest body size, and each heading against it |
+| Line spacing, space after a paragraph | in lines and points, per body paragraph, inherited through the styles |
+| Side margins | left plus right margin over page width |
+| Bold, italic, justified | share of characters, per 10 blocks; share of justified body paragraphs |
+| Pictures, tables | per 10 paragraphs |
+| Text per page | words or Thai characters per page: PDF only, since Word and OpenDocument files store no page breaks |
+| Typefaces, colours, saturation, aspect | as for slides; aspect is the page |
+
+PDF is read without layout: lines are joined into paragraphs by their length and ending, headings found by
+size, so line spacing, margins, bold and justification are not measured from a PDF, and a two-column PDF
+can join lines across columns. PDF type sizes include the page and form scales (exports from Canva and
+similar tools draw every page inside a scaled form). macOS `textutil` keeps text and sizes but drops heading
+styles and tables. Layout of figures, captions, page furniture and voice are traits.
+
+## sheet
+
+One unit is one sheet (a CSV is one sheet). Empty and hidden sheets are not measured; a hidden sheet's
+words and pictures still go to the copy check.
+
+| Dimension | How |
+|---|---|
+| Columns, rows | columns and rows that hold a value, per sheet |
+| Numbers, formulas | share of cells holding a number; share holding a formula |
+| Decimal places | per number cell, from its number format, or from the value in a CSV |
+| Styled header | share of sheets whose first used row is mostly bold or filled |
+| Merged ranges, charts | per sheet |
+| Label length | characters per text cell |
+| Type size, typefaces, colours | from the cell styles |
+
+A CSV has no formatting: only columns, rows, numbers, decimals and labels. The sheet's own numbers, names and
+labels are its material and never go on the card. The copy check looks for shared runs of words inside a
+cell (a note, a description), not across cells, so two sheets that both have a January to December header
+do not match.
+Chart types, conditional formats, number formats as a habit (currency, percent) and dashboard layout are
+traits.
+
 ## The generic route (any other medium)
 
-UI, slides, websites, 3D scenes, fashion, interiors, product photography sets, code style, packaging: there
+UI, websites, 3D scenes, fashion, interiors, product photography sets, code style, packaging: there
 is no measuring route, and the card still works.
 
 1. Study at least three references, or three distinct parts of one large reference (three screens of an
@@ -107,5 +195,5 @@ is no measuring route, and the card still works.
 5. Check by review: put the new work and the brief side by side and go through sections 3 to 5 of the
    brief. Then the pattern questions by eye: does any screen, slide or piece follow the reference's order?
    Reuse its layout grid exactly, its illustrations, its copy, its icons, its colour values? If the new
-   work exports to a measured medium (a UI recording to video, a deck to images, copy to text), measure
-   that export and run `style.py check` on it too.
+   work exports to a measured medium (a UI recording to video, screens to images, a page to PDF, copy to
+   text), measure that export and run `style.py check` on it too.

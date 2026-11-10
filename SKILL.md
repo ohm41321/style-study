@@ -1,15 +1,15 @@
 ---
 name: style-study
 description: >-
-  Study the style of reference works (video, images, music and sound, Thai or English writing, or any
-  other medium) and use it to design new, original work. Measure the references, write a style card of
-  ranges and habits behind a firewall that keeps out their order, timestamps, set pieces and material,
-  turn the card into a design brief for any medium (a film's style into slides, UI, music or copy), then
-  check the new work on two sides: close enough in style, far enough from a copy (same order,
-  near-duplicate frames, reused audio, shared text). Use when the user wants work in the style or feel of
-  a reference, wants to learn or extract a style, asks whether new work is too close to its reference, or
-  carries a look from one medium to another. Thai triggers: "ศึกษาสไตล์", "ถอดสไตล์", "อยากได้โทนแบบนี้",
-  "ทำให้ฟีลเหมือนงานนี้", "ออกแบบงานใหม่ตามสไตล์", "ไม่ก็อป", "เหมือนต้นฉบับเกินไปไหม". Not for copying,
+  Study the style of reference works (video, images, music, Thai or English writing, slide decks, Word or
+  PDF documents, spreadsheets, or any other medium) and use it to design new, original work. Measure the
+  references, write a style card of ranges and habits behind a firewall that keeps out their order, set
+  pieces and material, turn it into a design brief for any medium, then check the new work on two sides:
+  close enough in style, far enough from a copy (same order, near-duplicate frames or pictures, reused
+  audio, shared text). Use when the user wants work in the style or feel of a reference, wants to learn or
+  extract a style, asks whether new work is too close to its reference, or carries a look from one medium
+  to another. Thai triggers: "ศึกษาสไตล์", "ถอดสไตล์", "อยากได้โทนแบบนี้", "ทำให้ฟีลเหมือนงานนี้",
+  "ทำสไลด์สไตล์นี้", "ออกแบบงานใหม่ตามสไตล์", "ไม่ก็อป", "เหมือนต้นฉบับเกินไปไหม". Not for copying,
   remaking or imitating one specific work.
 ---
 
@@ -34,6 +34,8 @@ Run from the skill folder, or call `scripts/style.py` by its full path. Each ste
    ```sh
    python3 scripts/style.py measure ref1.mp4 ref2.mp4 -o measures-video.json
    python3 scripts/style.py measure post1.md post2.md post3.md -o measures-text.json
+   python3 scripts/style.py measure deck1.pptx deck2.key -o measures-slides.json
+   python3 scripts/style.py measure report.pdf --medium slides -o measures-slides.json  # a deck saved as PDF
    python3 scripts/style.py sheet ref1.mp4 -o sheet.png     # one frame per shot, to look at
    ```
 
@@ -56,7 +58,7 @@ Run from the skill folder, or call `scripts/style.py` by its full path. Each ste
    python3 scripts/style.py brief style.json --for slides --subject "launch deck for a budgeting app" -o brief.md
    ```
 
-   Targets: `video`, `audio`, `text`, `image`, `slides`, `ui`, `any`. Write the concept section first, from
+   Targets: `video`, `audio`, `text`, `image`, `slides`, `document`, `sheet`, `ui`, `any`. Write the concept section first, from
    the subject, before looking at any style target. How: [references/brief.md](references/brief.md).
    How a film's tempo becomes a slide pace or a UI transition: [references/translate.md](references/translate.md).
 
@@ -80,18 +82,25 @@ Run from the skill folder, or call `scripts/style.py` by its full path. Each ste
 
 | Medium | Files | Measures | Needs |
 |---|---|---|---|
-| text | .md .txt .html .srt .vtt | sentence and paragraph rhythm, questions, person, Thai endings, English mixing, lists | Python 3.9+ only |
+| text | .md .txt .html .srt .vtt .rst .tex .eml | sentence and paragraph rhythm, questions, person, Thai endings, English mixing, lists | Python 3.9+ only |
+| slides | .pptx .odp and their templates; .key .ppt .pps .sxi via LibreOffice; a PDF with `--medium slides` | text and bullets per slide, elements, pictures, fill, title and body size, background, contrast, typefaces, colours, plus the writing | Python only (pypdf or poppler for PDF) |
+| document | .docx .odt .rtf .epub .pdf and templates; .doc .pages .wpd .wps .hwp .abw via LibreOffice or macOS textutil | the writing, plus body size, heading ratio, line and paragraph spacing, margins, bold, italic, justified, pictures, tables, text per page | Python only (pypdf or poppler for PDF) |
+| sheet | .xlsx .ods .fods .csv .tsv and templates; .xls .numbers .sxc via LibreOffice | columns, rows, numbers, formulas, decimals, header styling, merged cells, charts, label length, type, colours | Python only |
 | video | .mp4 .mov .mkv .webm .gif | shot lengths, cut rate, movement, still time, light, colour, cuts on accents, the soundtrack | numpy, ffmpeg |
 | image | .png .jpg .webp .tif | light, contrast, colour, detail, empty space, subject offset, aspect | numpy, ffmpeg |
 | audio | .wav .mp3 .m4a .flac .ogg | loudness (EBU R128), range, tempo, onsets, quiet time, tone, bands, width | numpy, ffmpeg |
-| anything else | UI, slides, 3D, fashion, spaces, code style | the same card, written by hand | nothing |
+| anything else | UI, websites, 3D, fashion, spaces, code style | the same card, written by hand | nothing |
+
+Macro-enabled files (.pptm, .docm, .xlsm) are read as data; no macro ever runs.
 
 What each number means and where it is weak: [references/mediums.md](references/mediums.md). For a medium
 with no route, follow the generic route in the same file: the card schema, the firewall and the brief all
 work without measurements, and the check becomes a review against the brief.
 
 If `python3` has no numpy, use any Python that does, or make one:
-`python3 -m venv .venv && .venv/bin/pip install numpy`, then run the scripts with `.venv/bin/python`.
+`python3 -m venv .venv && .venv/bin/pip install numpy pypdf`, then run the scripts with `.venv/bin/python`.
+numpy and ffmpeg also let the check see a reference's picture re-saved inside a deck or document; without
+them pictures are compared by their bytes only.
 
 ## Files
 
@@ -110,9 +119,9 @@ If `python3` has no numpy, use any Python that does, or make one:
 - A style is not owned the way a work is, but a living artist's signature look, a brand's trade dress or
   a recognisable character can still be a problem to sell. If the person wants to sell work "in the style
   of" a named artist or brand, say so plainly before starting. This skill is not legal advice.
-- The pattern check catches order, near-duplicate frames, reused audio and shared text. It does not catch
+- The pattern check catches order, near-duplicate frames and pictures, reused audio and shared text. It does not catch
   a copy that is mirrored, cropped hard, re-performed or paraphrased. Look as well.
 
 Exit codes: 0 ok, 1 a check or lint failed (or the copy check could not run for lack of fingerprints),
 2 a usage or input problem. Self-test with known answers:
-`python3 scripts/check-skill.py` (run it with a Python that has numpy to include the media routes).
+`python3 scripts/check-skill.py` (run it with a Python that has numpy and pypdf to include the media routes and PDF).
