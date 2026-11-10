@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720" role="img" aria-label="The two-sided check: close in style, far in pattern">
+<title>The two-sided check: close in style, far in pattern</title>
+<rect x="1" y="1" width="1278" height="718" rx="22" fill="#F4F0E8" stroke="#DDD5C6" stroke-width="2"/>
+<text x="64.0" y="92.0" font-family="Georgia, 'Times New Roman', serif" font-size="44" fill="#1F1D1A">The two-sided check</text>
+<text x="66.0" y="130.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="19" fill="#6E675D">New work ships only when it sits close to the card and far from the reference.</text>
+<rect x="170" y="440" width="450" height="200" fill="#2F6B4F" fill-opacity="0.10"/>
+<line x1="620" y1="176" x2="620" y2="640" stroke="#2F6B4F" stroke-width="2" stroke-dasharray="7 7"/>
+<line x1="170" y1="440" x2="840" y2="440" stroke="#D9482B" stroke-width="2" stroke-dasharray="7 7"/>
+<text x="188.0" y="618.0" font-family="Georgia, 'Times New Roman', serif" font-size="24" fill="#2F6B4F" font-style="italic">ships</text>
+<text x="632.0" y="194.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#2F6B4F">75% of dimensions in range</text>
+<text x="632.0" y="212.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#2F6B4F">and no core one off</text>
+<text x="834.0" y="430.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#D9482B" text-anchor="end">a copy alarm fires</text>
+<path d="M170 166 L170 640 L850 640" fill="none" stroke="#1F1D1A" stroke-width="2.5"/>
+<text x="505.0" y="684.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="16" fill="#1F1D1A" text-anchor="middle">style: distance from the card's ranges</text>
+<text x="170.0" y="664.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#6E675D">in range</text>
+<text x="840.0" y="664.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#6E675D" text-anchor="end">off</text>
+<text x="112" y="408.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="16" fill="#1F1D1A" text-anchor="middle" transform="rotate(-90 112 408.0)">pattern: how much of the reference it takes</text>
+<text x="158.0" y="640.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#6E675D" text-anchor="end">none</text>
+<text x="158.0" y="184.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#6E675D" text-anchor="end">copied</text>
+<circle cx="230" cy="222" r="10" fill="#D9482B" stroke="#D9482B" stroke-width="3.5"/>
+<text x="252.0" y="220.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="16" fill="#1F1D1A">a re-cut of the reference</text>
+<text x="252.0" y="242.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#D9482B">order r = 1.00, 14/14 frames near-duplicate</text>
+<circle cx="266" cy="336" r="10" fill="#F4F0E8" stroke="#D9482B" stroke-width="3.5"/>
+<text x="288.0" y="334.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="16" fill="#1F1D1A">same order, new footage</text>
+<text x="288.0" y="356.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#D9482B">order r = 0.91, p = 0.003</text>
+<circle cx="290" cy="548" r="10" fill="#2F6B4F" stroke="#2F6B4F" stroke-width="3.5"/>
+<text x="312.0" y="546.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="16" fill="#1F1D1A">its own order, new footage</text>
+<text x="312.0" y="568.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#2F6B4F">style 100% in range, pattern pass</text>
+<circle cx="740" cy="584" r="10" fill="#5B6B7A" stroke="#5B6B7A" stroke-width="3.5"/>
+<text x="740.0" y="538.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="16" fill="#1F1D1A" text-anchor="middle">a slow, bright film</text>
+<text x="740.0" y="560.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#5B6B7A" text-anchor="middle">style 50% in range</text>
+<text x="880.0" y="214.0" font-family="Georgia, 'Times New Roman', serif" font-size="22" fill="#2F6B4F" font-style="italic">Style side</text>
+<text x="880.0" y="246.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#1F1D1A">Each measured dimension: the new</text>
+<text x="880.0" y="269.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#1F1D1A">work's median against the card's</text>
+<text x="880.0" y="292.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#1F1D1A">p10 to p90. Passes with 75% in range</text>
+<text x="880.0" y="315.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#1F1D1A">and no core dimension off.</text>
+<text x="880.0" y="374.0" font-family="Georgia, 'Times New Roman', serif" font-size="22" fill="#D9482B" font-style="italic">Pattern side</text>
+<text x="880.0" y="406.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#1F1D1A">Same order (a permutation test),</text>
+<text x="880.0" y="429.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#1F1D1A">near-duplicate frames or images,</text>
+<text x="880.0" y="452.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#1F1D1A">reused audio, shared text, names</text>
+<text x="880.0" y="475.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#1F1D1A">the card forbids.</text>
+<text x="880.0" y="548.0" font-family="Georgia, 'Times New Roman', serif" font-size="26" fill="#1F1D1A" font-style="italic">Both must pass.</text>
+<text x="880.0" y="580.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" fill="#6E675D">Positions are a sketch. The verdicts</text>
+<text x="880.0" y="598.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" fill="#6E675D">are real results of check-skill.py</text>
+<text x="880.0" y="616.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" fill="#6E675D">on synthetic films.</text>
+</svg>

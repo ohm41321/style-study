@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 554" width="1280" height="554" role="img" aria-label="style.py check output: a sibling passes, a re-cut fails">
+<title>style.py check output: a sibling passes, a re-cut fails</title>
+<rect x="1" y="1" width="1278" height="552" rx="22" fill="#1C1B19" stroke="#2E2B27" stroke-width="2"/>
+<rect x="1" y="1" width="1278" height="552" rx="22" fill="#1C1B19" stroke="#2E2B27" stroke-width="2"/>
+<line x1="2" y1="52" x2="1278" y2="52" stroke="#2E2B27" stroke-width="2"/>
+<circle cx="34" cy="27" r="7" fill="#4A4640"/>
+<circle cx="56" cy="27" r="7" fill="#4A4640"/>
+<circle cx="78" cy="27" r="7" fill="#4A4640"/>
+<text x="640.0" y="32.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" fill="#8D867B" text-anchor="middle">films  ·  zsh</text>
+<text x="40" y="96" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="16.5" xml:space="preserve"><tspan fill="#8D867B">$ </tspan><tspan fill="#ECE6DA">python3 scripts/style.py check new-cut.mp4 --card style.json --fingerprints fingerprints.json</tspan></text>
+<text x="40" y="123" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="16.5" fill="#8FCB9C" xml:space="preserve">STYLE PASS: 100% of dimensions in range</text>
+<text x="40" y="150" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="16.5" fill="#A79F92" xml:space="preserve">  ok  Shot length [core]: 1.3 against 0.6-2.8 s</text>
+<text x="40" y="177" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="16.5" fill="#A79F92" xml:space="preserve">  ok  Movement inside a shot [core]: 0.824 against 0.01-3.35 frame change</text>
+<text x="40" y="204" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="16.5" fill="#A79F92" xml:space="preserve">  ok  Brightness: 0.445 against 0.3-0.623 0-1</text>
+<text x="40" y="231" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="16.5" fill="#6E675D" xml:space="preserve">  ...  7 more dimensions in range</text>
+<text x="40" y="258" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="16.5" fill="#8FCB9C" xml:space="preserve">PATTERN PASS: nothing taken from the reference's order or material</text>
+<text x="40" y="285" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="16.5" fill="#8FCB9C" xml:space="preserve">check: PASS</text>
+<text x="40" y="339" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="16.5" xml:space="preserve"><tspan fill="#8D867B">$ </tspan><tspan fill="#ECE6DA">python3 scripts/style.py check recut.mp4 --card style.json --fingerprints fingerprints.json</tspan></text>
+<text x="40" y="366" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="16.5" fill="#8FCB9C" xml:space="preserve">STYLE PASS: 100% of dimensions in range</text>
+<text x="40" y="393" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="16.5" fill="#6E675D" xml:space="preserve">  ...  10 dimensions in range</text>
+<text x="40" y="420" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="16.5" fill="#F08A70" xml:space="preserve">PATTERN FAIL: copied pattern found</text>
+<text x="40" y="447" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="16.5" fill="#F08A70" xml:space="preserve">  COPY r1: follows the reference's order (r=1.00, p=0.003); build your own structure</text>
+<text x="40" y="474" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="16.5" fill="#F08A70" xml:space="preserve">  COPY r1: 14 of 14 frames or images are near-duplicates of the reference's</text>
+<text x="40" y="501" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="16.5" fill="#F08A70" xml:space="preserve">check: FAIL</text>
+</svg>

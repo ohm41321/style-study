@@ -1,0 +1,71 @@
+{
+  "schema": "style-study/1",
+  "name": "harbor-dusk",
+  "made": "2026-11-10",
+  "references": [
+    {"id": "r1", "medium": "video", "file": "harbor-film-a.mp4", "units": 38, "unit": "shots", "seconds": 94.2, "fps": 24.0, "width": 1920, "height": 1080, "aspect": 1.778, "audio": true},
+    {"id": "r2", "medium": "video", "file": "harbor-film-b.mp4", "units": 31, "unit": "shots", "seconds": 81.0, "fps": 24.0, "width": 1920, "height": 1080, "aspect": 1.778, "audio": true},
+    {"id": "r3", "medium": "text", "file": "harbor-notes.md", "units": 64, "unit": "sentences", "lang": "en"}
+  ],
+  "measured": {
+    "video": {
+      "shot_length": {"label": "Shot length", "unit": "s", "p10": 1.2, "p50": 2.3, "p90": 5.4, "n": 69, "refs": 2, "confidence": "high"},
+      "cuts_per_minute": {"label": "Hard cuts per minute", "unit": "/min", "p10": 18.0, "p50": 23.5, "p90": 31.0, "n": 6, "refs": 2, "confidence": "low"},
+      "motion": {"label": "Movement inside a shot", "unit": "frame change", "p10": 0.6, "p50": 1.6, "p90": 3.9, "n": 69, "refs": 2, "confidence": "high"},
+      "still_share": {"label": "Time spent in still shots", "unit": "share", "p10": 0.12, "p50": 0.24, "p90": 0.33, "n": 6, "refs": 2, "confidence": "low"},
+      "luma": {"label": "Brightness", "unit": "0-1", "p10": 0.18, "p50": 0.31, "p90": 0.47, "n": 69, "refs": 2, "confidence": "high"},
+      "contrast": {"label": "Contrast", "unit": "0-1", "p10": 0.13, "p50": 0.19, "p90": 0.26, "n": 69, "refs": 2, "confidence": "high"},
+      "saturation": {"label": "Saturation", "unit": "0-1", "p10": 0.09, "p50": 0.17, "p90": 0.28, "n": 69, "refs": 2, "confidence": "high"},
+      "warmth": {"label": "Warm share of the colour", "unit": "share", "p10": 0.48, "p50": 0.63, "p90": 0.79, "n": 69, "refs": 2, "confidence": "high"},
+      "audio_onset_rate": {"label": "Soundtrack: onsets per second", "unit": "/s", "p10": 0.8, "p50": 1.3, "p90": 2.2, "n": 34, "refs": 2, "confidence": "high"},
+      "audio_loudness": {"label": "Soundtrack: integrated loudness", "unit": "LUFS", "p10": -17.8, "p50": -16.9, "p90": -16.1, "n": 2, "refs": 2, "confidence": "medium"}
+    },
+    "text": {
+      "sentence_length": {"label": "Sentence length", "unit": "words", "p10": 4.0, "p50": 9.0, "p90": 17.0, "n": 64, "refs": 1, "confidence": "medium"},
+      "paragraph_sentences": {"label": "Sentences per paragraph", "unit": "sentences", "p10": 1.0, "p50": 2.0, "p90": 3.0, "n": 27, "refs": 1, "confidence": "medium"},
+      "question_rate": {"label": "Questions", "unit": "share of sentences", "p10": 0.0, "p50": 0.1, "p90": 0.2, "n": 6, "refs": 1, "confidence": "low"},
+      "exclaim_rate": {"label": "Exclamations", "unit": "share of sentences", "p10": 0.0, "p50": 0.0, "p90": 0.0, "n": 6, "refs": 1, "confidence": "low"}
+    }
+  },
+  "lang": {"text": "en"},
+  "axes": {
+    "tempo": {"band": "medium", "from": "shot_length", "value": 2.3, "medium": "video"},
+    "energy": {"band": "calm", "from": "motion", "value": 1.6, "medium": "video"},
+    "variation": {"band": "wide", "from": "spread:shot_length", "value": 4.5, "medium": "video"},
+    "brightness": {"band": "dark", "from": "luma", "value": 0.31, "medium": "video"},
+    "contrast": {"band": "medium", "from": "contrast", "value": 0.19, "medium": "video"},
+    "color": {"band": "muted", "from": "saturation", "value": 0.17, "medium": "video"},
+    "warmth": {"band": "warm", "from": "warmth", "value": 0.63, "medium": "video"},
+    "space": {"band": "balanced", "from": "still_share", "value": 0.24, "medium": "video"}
+  },
+  "traits": [
+    {"dimension": "camera", "statement": "The camera slides sideways at walking pace and never zooms or pushes in.",
+     "do": "Move the camera only on slow lateral slides; keep the focal length fixed.",
+     "evidence": {"refs": 2, "count": 17}, "confidence": "high"},
+    {"dimension": "framing", "statement": "Subjects sit low in the frame with a band of sky or wall above them.",
+     "do": "Place the subject in the lower third and leave the top of the frame quiet.",
+     "evidence": {"refs": 2, "count": 22}, "confidence": "high"},
+    {"dimension": "light", "statement": "Practical lamps and windows are the light sources; faces are lit from the side.",
+     "do": "Light from a visible source to one side; let the far side of a face fall off.",
+     "evidence": {"refs": 2, "count": 14}, "confidence": "medium"},
+    {"dimension": "type", "statement": "On-screen words are a thin serif, small, and fade up over a few frames.",
+     "do": "Set captions in a light serif at a small size and fade them in; never slide or scale type.",
+     "evidence": {"refs": 2, "count": 9}, "confidence": "high"},
+    {"dimension": "sound", "statement": "Room tone and a single sustained instrument carry the sound; hits are rare and soft.",
+     "do": "Score with one sustained voice over room tone; save any accent for a cut that needs it.",
+     "evidence": {"refs": 2, "count": 6}, "confidence": "medium"},
+    {"dimension": "voice", "statement": "Sentences are short and concrete, in present tense, with no exclamations.",
+     "do": "Write short present-tense sentences about things that can be seen or touched.",
+     "evidence": {"refs": 1, "count": 40}, "confidence": "high"},
+    {"dimension": "rhythm", "statement": "A long held shot follows every run of three or four quick ones.",
+     "do": "After a run of quick shots, hold one for several seconds before cutting again.",
+     "evidence": {"refs": 2, "count": 8}, "confidence": "medium"}
+  ],
+  "avoid": [
+    "No whip pans, speed ramps or lens flares.",
+    "Never more than one exclamation in a whole piece; most pieces have none.",
+    "No saturated accent colours; nothing neon."
+  ],
+  "forbid": ["Northwind Parcel", "Dusk Line"],
+  "notes": "A made-up style for the documentation. The references named here do not exist."
+}
