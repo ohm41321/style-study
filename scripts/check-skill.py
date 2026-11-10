@@ -65,8 +65,11 @@ def check_package():
     name = re.search(r"^name:\s*(\S+)", fm.group(1), re.M).group(1) if fm else None
     desc = re.search(r"^description:\s*(>-?|\|)?\s*\n?(.*?)(?=^\w|\Z)", fm.group(1), re.M | re.S) if fm else None
     desc_text = " ".join(desc.group(2).split()) if desc else ""
-    check("frontmatter", bool(fm) and name == os.path.basename(SKILL) and 0 < len(desc_text) <= 1024,
-          f"name={name}, description {len(desc_text)} chars")
+    folder = os.path.basename(SKILL)
+    if re.fullmatch(r"\d+(\.\d+)*", folder):  # a Claude Code plugin is installed as <name>/<version>/
+        folder = os.path.basename(os.path.dirname(SKILL))
+    check("frontmatter", bool(fm) and name == folder and 0 < len(desc_text) <= 1024,
+          f"name={name}, folder {folder}, description {len(desc_text)} chars")
     broken = []
     for root, _, files in os.walk(SKILL):
         for f in files:
