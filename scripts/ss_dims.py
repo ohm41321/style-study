@@ -9,6 +9,8 @@ band edges and the starting numbers in TRANSLATE are rules of thumb, not measure
 translate.md says how they were chosen and how to override them.
 """
 
+import math
+
 DIMS = {
     # video (picture). Frame change is the mean absolute change between neighbouring frames on a
     # 128x72 grey copy, in 0-255 grey levels.
@@ -130,6 +132,16 @@ def spec(key):
     if key.startswith("audio_"):
         label, core = "Soundtrack: " + label[0].lower() + label[1:], False
     return {"label": label, "unit": unit, "scale": scale, "tol": tol, "core": core}
+
+
+def accept_range(dim, m):
+    """The values the style check accepts for a dimension: the card's p10-p90 widened by the dimension's slack."""
+    sp = spec(dim)
+    lo, hi, tol = m["p10"], m["p90"], sp["tol"]
+    if sp["scale"] == "log":
+        return 10 ** (math.log10(max(lo, 1e-9)) - tol), 10 ** (math.log10(max(hi, 1e-9)) + tol)
+    slack = max(tol, 0.1 * (hi - lo))
+    return lo - slack, hi + slack
 
 
 # ---------------------------------------------------------------- axes

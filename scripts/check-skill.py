@@ -2,9 +2,15 @@
 """Validate the style-study skill itself on synthetic fixtures with known answers.
 
   package     SKILL.md frontmatter (name = folder, description <= 1024 chars), links resolve, scripts compile
-              and answer --help, no stray files, the example card lints clean
+              and answer --help, no stray files, the example card lints clean against its pattern.md
   text        English and Thai fixtures: sentence and paragraph counts, questions, polite endings
   lint        each firewall rule fires on a card that breaks it; a clean card passes
+  originality habits with exact values (px, ms, hex, curves, decimals, Thai units) are refused; a habit that
+              restates a pattern.md signature is refused (English and Thai); pattern.md needs a Signatures
+              section; at most five core habits; files of one work count as one; a one-sample dimension is
+              briefed as a direction; the brief diverges first, keeps a ledger, asks for the maker's own
+              forms and splits core from free habits; the reference's exact palette is a copy finding
+              unless --own-palette; the imitation review prompt lists every item
   card        style.json holds no per-unit sequence, palette hex or frame hash
   brief       a brief for every target has all seven sections and no fingerprint data
   text check  copy and same-order rewrite fail the pattern side; a reshuffled sibling passes both sides;
@@ -118,8 +124,9 @@ def check_package():
                 stray.append(os.path.relpath(os.path.join(root, f), SKILL))
     check("stray files", not stray, ", ".join(stray) or "none")
     ex = os.path.join(SKILL, "assets", "example-card.json")
-    p = cli("lint", ex)
-    check("example card lints clean", p.returncode == 0, p.stdout.strip().splitlines()[-1] if p.stdout else p.stderr)
+    p = cli("lint", ex, "--pattern", os.path.join(SKILL, "assets", "example-pattern.md"))
+    check("example card lints clean against its pattern.md", p.returncode == 0 and not re.search(r"^warn ", p.stdout, re.M),
+          p.stdout.strip().splitlines()[-1] if p.stdout else p.stderr)
 
 
 # ---------------------------------------------------------------- text fixtures
@@ -300,6 +307,163 @@ def check_lint(tmp, card_path, fp_path):
     check("lint: an opening described is warned", bool(warnings), warnings[0] if warnings else "no warning")
 
 
+PATTERN_MD = """# Checker only
+
+## Set pieces and order
+- A slideshow of event photos over a torn-paper collage.
+
+## Signatures
+- Secondary buttons are white pills with a thin green outline and a filled green circle holding a white arrow at the right end.
+- A fixed hook line on a rounded pill in the top band of every shot.
+- ปุ่มรองเป็นแคปซูลสีขาวขอบเขียวบาง มีวงกลมเขียวทึบใส่ลูกศรสีขาวอยู่ที่ปลายด้านขวา
+"""
+
+
+def check_originality(tmp, card_path, fp_path):
+    """Style, never the look: habits are principles, signatures stay with the checker, the brief makes room to design."""
+    import ss_card
+    import ss_check
+    base = json.load(open(card_path, encoding="utf-8"))
+    fps = json.load(open(fp_path, encoding="utf-8"))
+    trait = {"dimension": "type", "statement": "Small type does most of the work and headings stay modest.",
+             "do": "Build hierarchy from size steps and grey value, never from a second typeface.",
+             "evidence": {"refs": 1, "count": 9}, "confidence": "high", "core": True}
+    good = dict(base, traits=[trait], avoid=["No drop shadows on content."], forbid=["Northwind Parcel"])
+    errors, _ = ss_card.lint(good, fps)
+    check("lint: a habit stated as a principle passes", not errors, "; ".join(errors) or "0 errors")
+
+    literal = {"a size in px": "Set labels at about 12.5 px.", "a timing in ms": "Hovers fade over 150 ms.",
+               "a hex colour": "The accent is #7A5A14 on white.", "a CSS curve": "Moves use cubic-bezier(.16, 1, .3, 1).",
+               "a multiplier": "Titles are 3x the body size.", "a bare decimal": "Line height stays near 1.35.",
+               "a range in px": "Corners are 16-24 px.", "a Thai unit": "ตัวอักษรเนื้อหาขนาด 16 พิกเซล"}
+    for label, text in literal.items():
+        bad = json.loads(json.dumps(good))
+        bad["traits"][0]["do"] = text
+        errors, _ = ss_card.lint(bad, fps)
+        check(f"lint: {label} in a habit is refused", any("exact value" in e for e in errors),
+              next((e for e in errors if "exact value" in e), "; ".join(errors) or "no error raised"))
+    bad = json.loads(json.dumps(good))
+    bad["avoid"].append("Nothing over 4 px radius.")
+    errors, warnings = ss_card.lint(bad, fps)
+    check("lint: an exact value in avoid is warned, not refused", not errors and any("exact value" in w for w in warnings),
+          "; ".join(errors + warnings) or "nothing raised")
+
+    pattern = os.path.join(tmp, "pattern.md")
+    open(pattern, "w", encoding="utf-8").write(PATTERN_MD)
+    items = ss_card.pattern_items(PATTERN_MD)
+    check("pattern.md: every bullet is an item", len(items) == 4, f"{len(items)} items")
+    restated = {"English": "Make every button a pill; use a thin-outlined pill with a small filled circle-arrow for go-to actions.",
+                "Thai": "ทำปุ่มรองเป็นแคปซูลขอบเขียวบาง ใส่วงกลมเขียวทึบกับลูกศรสีขาวที่ปลายด้านขวา"}
+    for label, text in restated.items():
+        bad = json.loads(json.dumps(good))
+        bad["traits"][0]["do"] = text
+        errors, _ = ss_card.lint(bad, fps, items)
+        check(f"lint: a habit that restates a signature in pattern.md is refused ({label})",
+              any("pattern.md" in e for e in errors), next((e for e in errors if "pattern.md" in e), "no error raised"))
+    errors, _ = ss_card.lint(good, fps, items)
+    check("lint: a principle passes against pattern.md", not errors, "; ".join(errors) or "0 errors")
+    bad = json.loads(json.dumps(good))
+    bad["traits"][0]["do"] = "Make every button a pill; use a thin-outlined pill with a small filled circle-arrow for go-to actions."
+    cpath = os.path.join(tmp, "restated.json")
+    json.dump(bad, open(cpath, "w", encoding="utf-8"))
+    p = cli("lint", cpath, "--fingerprints", fp_path, "--pattern", pattern)
+    check("lint --pattern: the CLI reads pattern.md and refuses", p.returncode == 1 and "pattern.md" in p.stdout,
+          p.stdout.strip().splitlines()[-1] if p.stdout else p.stderr.strip()[-120:])
+
+    sigs = ss_card.pattern_signatures(PATTERN_MD)
+    check("pattern.md: the Signatures section is read on its own", len(sigs) == 3 and "slideshow" not in " ".join(sigs),
+          f"{len(sigs)} signatures")
+    gpath = os.path.join(tmp, "principled.json")
+    json.dump(good, open(gpath, "w", encoding="utf-8"))
+    bare = os.path.join(tmp, "pattern-no-signatures.md")
+    open(bare, "w", encoding="utf-8").write("# Set pieces\n- A slideshow of event photos over a torn-paper collage.\n")
+    p = cli("lint", gpath, "--fingerprints", fp_path, "--pattern", bare)
+    ok_p = cli("lint", gpath, "--fingerprints", fp_path, "--pattern", pattern)
+    check("lint --pattern: a pattern.md without signatures is refused, one with them passes",
+          p.returncode == 1 and "Signatures" in p.stdout and ok_p.returncode == 0,
+          (p.stdout.strip().splitlines() or ["no output"])[-1] + " | " + (ok_p.stdout.strip().splitlines() or ["no output"])[-1])
+    bom = os.path.join(tmp, "pattern-bom.md")
+    open(bom, "w", encoding="utf-8-sig").write("## Signatures\n- A green pill button with a small circle arrow.\n")
+    p = cli("lint", gpath, "--fingerprints", fp_path, "--pattern", bom)
+    check("lint --pattern: a pattern.md saved with a byte-order mark is read", p.returncode == 0,
+          (p.stdout.strip().splitlines() or [p.stderr.strip()[-120:]])[-1])
+
+    many = json.loads(json.dumps(good))
+    many["traits"] = [dict(trait, dimension=f"d{i}") for i in range(6)]
+    errors, _ = ss_card.lint(many, fps)
+    check("lint: more than five core habits is refused", any("core" in e for e in errors), "; ".join(errors) or "no error raised")
+    none = json.loads(json.dumps(good))
+    none["traits"][0].pop("core")
+    _, warnings = ss_card.lint(none, fps)
+    check("lint: no core habit is warned", any("core" in w for w in warnings), "; ".join(warnings) or "no warning")
+
+    a, b = os.path.join(tmp, "work-a.md"), os.path.join(tmp, "work-b.md")
+    shutil.copy(os.path.join(tmp, "ref.md"), a)
+    shutil.copy(os.path.join(tmp, "sibling.md"), b)
+    cli("measure", a, b, "--work", "one blog", "-o", os.path.join(tmp, "m-work.json"))
+    cli("card", os.path.join(tmp, "m-work.json"), "-o", os.path.join(tmp, "work.json"), "--fingerprints", os.path.join(tmp, "work-fp.json"))
+    wcard = json.load(open(os.path.join(tmp, "work.json"), encoding="utf-8"))
+    wcard.update(traits=[trait], forbid=["Northwind Parcel"])
+    _, warnings = ss_card.lint(wcard, None)
+    shown = ss_card.render(wcard)
+    check("measure --work: two files of one work count as one work", "from 1 work" in shown and any("one work" in w for w in warnings),
+          next((l for l in shown.splitlines() if l.startswith("Learned")), "") + " | " + "; ".join(warnings))
+    counts = {m["refs"] for d in wcard["measured"].values() for m in d.values()}
+    highs = [k for d in wcard["measured"].values() for k, m in d.items() if m["confidence"] == "high"]
+    check("measure --work: the measured ranges count one work as one reference", counts == {1} and not highs,
+          f"refs {sorted(counts)}; high confidence: {', '.join(highs) or 'none'}")
+
+    one = json.loads(json.dumps(good))
+    dim = next(iter(one["measured"]["text"]))
+    one["measured"]["text"][dim].update(p10=46.6, p50=46.6, p90=46.6, n=1)
+    b = ss_card.brief(one, "text", "a test subject")
+    row = next((l for l in b.splitlines() if l.startswith(f"- {one['measured']['text'][dim]['label']}:")), "")
+    check("brief: a one-sample dimension is a direction, not a point target", "46.6 - 46.6" not in row and "one sample" in row, row)
+
+    free = [dict(trait, dimension="space", do="Spend empty space between zones, not inside them.", core=False),
+            dict(trait, dimension="motion", do="Move only after a change of state.", core=False)]
+    rich = dict(good, traits=[trait] + free)
+    b = ss_card.brief(rich, "ui", "an internal library app")
+    need = ("Three concepts", "Invention ledger", "Your form", "Core", "Free", "bend or drop", "Do not open the reference",
+            "signature", "Hand it back", "imitation review")
+    missing = [s for s in need if s not in b]
+    core_part = b.split("Free", 1)[0]
+    check("brief: diverge first, a ledger, own forms, core and free habits, clean room, review",
+          not missing and trait["do"] in core_part and "Move only after a change of state." in b.split("Free", 1)[-1],
+          "missing " + ", ".join(missing) if missing else "all present")
+    check("brief: no longer says to keep every habit", "Keep the habits; vary everything" not in b, "")
+    same_b = ss_card.brief(rich, "text", "a short essay")
+    kept = ("fingerprints.json", "pattern.md", "style.json", "style.md", "style.py check", "style.py review")
+    leaks = sorted({k for k in kept for text in (b, same_b) if k in text})
+    check("brief: the maker's brief names none of the checker's files or commands", not leaks,
+          "names " + ", ".join(leaks) if leaks else "none named")
+    check("brief: across media, core habits without a counterpart may be dropped, without a contradiction",
+          "carry every one" not in b and "counterpart" in b.split("**Free**", 1)[0].split("**Core**", 1)[-1]
+          and "carry every one" in same_b, "")
+
+    pal = [{"lab": [52.0, 48.0, 31.0], "share": 0.30}, {"lab": [61.0, -28.0, 22.0], "share": 0.20}]
+    pfps = {"refs": [{"id": "r1", "medium": "image", "fp": {"dhash": [], "palette": pal}}]}
+    p = ss_check.pattern_side({"forbid": []}, pfps, "image", {"dhash": [], "palette": pal})
+    check("check: the reference's exact palette is a copy finding", any("colour set" in f for f in p["findings"]),
+          "; ".join(p["findings"] + p["warnings"]) or "nothing raised")
+    p = ss_check.pattern_side({"forbid": []}, pfps, "image", {"dhash": [], "palette": pal}, own_palette=True)
+    check("check: an owned palette stays a warning with --own-palette",
+          not p["findings"] and any("colour set" in w for w in p["warnings"]), "; ".join(p["findings"] + p["warnings"]))
+
+    shot = os.path.join(tmp, "new-screen.png")
+    open(shot, "wb").write(b"\x89PNG\r\n\x1a\n")
+    p = cli("review", pattern, shot, "-o", "-")
+    ok = (p.returncode == 0 and all(i in p.stdout for i in items) and "REVIEW: IMITATION" in p.stdout
+          and "REVIEW: CLEAR" in p.stdout and "new-screen.png" in p.stdout and "brief" in p.stdout)
+    check("review: the prompt lists every item, the files and the verdict rule", ok,
+          f"exit {p.returncode}; {len(p.stdout)} chars" if p.returncode == 0 else p.stderr.strip()[-120:])
+    empty = os.path.join(tmp, "empty-pattern.md")
+    open(empty, "w", encoding="utf-8").write("# nothing listed\n")
+    p = subprocess.run([sys.executable, STYLE, "review", empty, shot], capture_output=True, text=True)
+    check("review: a pattern.md with no items exits 2", p.returncode == 2 and "Traceback" not in p.stderr,
+          f"exit {p.returncode}; {p.stderr.strip()[-120:]}")
+
+
 def check_card_and_brief(card_paths):
     import ss_card
     from ss_dims import TARGETS
@@ -398,7 +562,7 @@ def check_contracts(tmp):
     generic = {"schema": "style-study/1", "name": "hand-card", "references": [{"id": "r1", "medium": "ui", "file": "app-screens"}],
                "measured": {}, "axes": {"tempo": {"band": "slow"}, "space": {"band": "airy"}},
                "traits": [{"dimension": "layout", "statement": "Screens hold one task each with wide margins.",
-                           "do": "Give each screen one task and margins of 48 px or more.", "evidence": {"refs": 1, "count": 6},
+                           "do": "Give each screen one task and keep its margins wide.", "evidence": {"refs": 1, "count": 6},
                            "confidence": "high"}], "avoid": ["No carousels."], "forbid": ["Northwind Parcel"]}
     gpath = os.path.join(tmp, "generic.json")
     json.dump(generic, open(gpath, "w"))
@@ -1546,6 +1710,7 @@ def main():
         if got:
             cards.append(got[0])
             section("lint", check_lint, tmp, *got)
+            section("originality", check_originality, tmp, *got)
             section("contracts", check_contracts, tmp)
         try:
             import numpy as np

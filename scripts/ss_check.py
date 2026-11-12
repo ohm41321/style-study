@@ -1,9 +1,7 @@
 """The two-sided check: is the new work close enough in style, and far enough in pattern?"""
 
-import math
-
 from ss_common import WORDED, WRITING, StyleError, summary
-from ss_dims import BANDS3, axes_of, spec
+from ss_dims import BANDS3, accept_range, axes_of, spec
 import ss_pattern as pat
 
 LANG_DIMS = {"sentence_length", "polite_end_rate", "soft_end_rate", "latin_mix", "comma_rate", "contraction_rate",
@@ -16,17 +14,11 @@ STYLE_SHARE = 0.75
 
 def compare_dim(dim, m, value):
     sp = spec(dim)
-    lo, hi, tol = m["p10"], m["p90"], sp["tol"]
-    if sp["scale"] == "log":
-        v, a, b = (math.log10(max(x, 1e-9)) for x in (value, lo, hi))
-        a, b = a - tol, b + tol
-        off = (v - b) if v > b else (a - v) if v < a else 0.0
-        ok = off == 0.0
-        side = "high" if v > b else "low" if v < a else ""
-    else:
-        slack = max(tol, 0.1 * (hi - lo))
-        ok = lo - slack <= value <= hi + slack
-        side = "high" if value > hi + slack else "low" if value < lo - slack else ""
+    lo, hi = m["p10"], m["p90"]
+    a, b = accept_range(dim, m)
+    v = max(value, 1e-9) if sp["scale"] == "log" else value
+    side = "high" if v > b else "low" if v < a else ""
+    ok = not side
     return {"dim": dim, "label": sp["label"], "core": sp["core"], "new": value, "p10": lo, "p90": hi,
             "unit": sp["unit"], "ok": ok, "side": side}
 
@@ -71,7 +63,7 @@ def style_side(card, medium, values, lang):
     return {"mode": "translated", "rows": rows, "share": same, "ok": all(r["ok"] for r in rows) and same >= 0.5}
 
 
-def pattern_side(card, fingerprints, medium, new_fp, new_text=None, lang=None):
+def pattern_side(card, fingerprints, medium, new_fp, new_text=None, lang=None, own_palette=False):
     from ss_text import verbatim
 
     findings, warnings, gaps = [], [], []
@@ -103,11 +95,7 @@ def pattern_side(card, fingerprints, medium, new_fp, new_text=None, lang=None):
                                      ref_thumbs=rfp.get("thumbs"), new_thumbs=new_fp.get("thumbs"))
             if d["alarm"]:
                 findings.append(f"{rid}: {d['matched']} of {d['of']} frames or images are near-duplicates of the reference's")
-            if rfp.get("palette") and new_fp.get("palette"):
-                pm = pat.palette_match(rfp["palette"], new_fp["palette"])
-                if pm["warn"]:
-                    warnings.append(f"{rid}: uses the reference's chromatic colour set (worst delta E {pm['worst_delta_e']:.1f}); "
-                                    "fine for a look, not for a brand")
+            palette(rid, rfp, new_fp, own_palette, findings, warnings)
         ra = rfp if r["medium"] == "audio" else rfp.get("audio")
         na = new_fp if medium == "audio" else new_fp.get("audio")
         if ra and na:
@@ -118,7 +106,7 @@ def pattern_side(card, fingerprints, medium, new_fp, new_text=None, lang=None):
             elif a["alarm"]:
                 findings.append(f"{rid}: {a['run']} s of audio match the reference's audio second for second")
         if medium in DOCS or r["medium"] in DOCS:
-            media_reuse(rid, r["medium"], rfp, medium, new_fp, findings, warnings)
+            media_reuse(rid, r["medium"], rfp, medium, new_fp, findings, warnings, own_palette)
         if medium in WORDED and r["medium"] in WORDED and new_text is not None and rfp.get("shingles"):
             # in the reference's language, whatever the draft's: Thai pasted into English text still counts
             rl = r.get("lang") or "en"
@@ -146,7 +134,22 @@ def _pictures(medium, fp):
     return fp.get("media_dhash"), fp.get("media_thumbs")
 
 
-def media_reuse(rid, ref_medium, rfp, medium, new_fp, findings, warnings):
+def palette(rid, rfp, new_fp, own_palette, findings, warnings):
+    """The reference's exact colour set is its material, like its footage: a copy, unless the colours are the person's own."""
+    if not (rfp.get("palette") and new_fp.get("palette")):
+        return
+    pm = pat.palette_match(rfp["palette"], new_fp["palette"])
+    if not pm["warn"]:
+        return
+    if own_palette:
+        warnings.append(f"{rid}: uses the reference's chromatic colour set (worst delta E {pm['worst_delta_e']:.1f}); "
+                        "allowed by --own-palette because the colours are the person's own")
+    else:
+        findings.append(f"{rid}: uses the reference's chromatic colour set (worst delta E {pm['worst_delta_e']:.1f}); "
+                        "build a palette from the subject (pass --own-palette only when these colours are the person's own brand)")
+
+
+def media_reuse(rid, ref_medium, rfp, medium, new_fp, findings, warnings, own_palette=False):
     """Pictures a document, deck or sheet shares with a reference: the same bytes, or the same picture re-saved."""
     same = sorted(set(rfp.get("media") or []) & set(new_fp.get("media") or []))
     if same:
@@ -160,11 +163,8 @@ def media_reuse(rid, ref_medium, rfp, medium, new_fp, findings, warnings):
     elif (rh is None and rfp.get("media")) or (nh is None and new_fp.get("media")):
         warnings.append(f"{rid}: pictures compared by their bytes only; with numpy and ffmpeg installed, a re-saved or "
                         "resized copy is caught too")
-    if ref_medium == medium and rfp.get("palette") and new_fp.get("palette"):
-        pm = pat.palette_match(rfp["palette"], new_fp["palette"])
-        if pm["warn"]:
-            warnings.append(f"{rid}: uses the reference's chromatic colour set (worst delta E {pm['worst_delta_e']:.1f}); "
-                            "fine for a look, not for a brand")
+    if ref_medium == medium:
+        palette(rid, rfp, new_fp, own_palette, findings, warnings)
 
 
 def _shown(x):

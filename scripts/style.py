@@ -4,10 +4,12 @@
   measure FILE...            measure references (one medium per call: video, image, audio, text, slides,
                              document or sheet)
   card MEASURES...           pool measurements into style.json (ranges, axes) + fingerprints.json (copy check data)
-  lint CARD                  the pattern firewall: timestamps, positions, quotes, names, thin evidence
-  render CARD                write the card as Markdown for people and other skills
-  brief CARD --for TARGET    a design brief for a new, original work in any target medium
+  lint CARD                  the pattern firewall: timestamps, positions, quotes, names, thin evidence, exact
+                             values, habits that restate a device from pattern.md (--pattern)
+  render CARD                write the card as Markdown for the person studying and the checker
+  brief CARD --for TARGET    a design brief for a new, original work in any target medium (the maker's only file)
   check NEW... --card CARD   two-sided: style close enough, pattern far enough
+  review PATTERN NEW...      the prompt for an independent imitation review of new work against pattern.md
   sheet VIDEO                contact sheet (one frame per shot) to read habits from
 
 The text, slides, document and sheet routes need only Python 3.9+ (PDF also needs pypdf or poppler; older
@@ -69,6 +71,9 @@ def measure_files(files, medium, max_seconds):
 def cmd_measure(a):
     medium = group(a.files, a.medium)
     ms = measure_files(a.files, medium, a.max_seconds)
+    if a.work:
+        for r in ms["refs"]:
+            r["info"]["work"] = a.work
     for r in ms["refs"]:
         r.pop("_text", None)  # the words stay out of measures.json; only their hashes are kept
     save_json(ms, a.out)
@@ -102,7 +107,19 @@ def cmd_lint(a):
     import ss_card
     card = ss_card.validate(load_json(a.card), a.card)
     fps = load_json(a.fingerprints) if a.fingerprints else None
-    errors, warnings = ss_card.lint(card, fps)
+    items = None
+    if a.pattern:
+        if not os.path.isfile(a.pattern):
+            raise StyleError(f"not found: {a.pattern}")
+        with open(a.pattern, encoding="utf-8-sig") as f:
+            text = f.read()
+        items = ss_card.pattern_items(text)
+    errors, warnings = ss_card.lint(card, fps, items)
+    if items is not None and not ss_card.pattern_signatures(text):
+        errors.append(f"{a.pattern} has no Signatures section: under a heading named Signatures, list the devices that make "
+                      "the reference recognisable (a component, a placement, a treatment, a format, a motif), one bullet each")
+    if items is None:
+        warnings.append("no --pattern: the habits were not checked against the reference's devices in pattern.md")
     for e in errors:
         print(f"FAIL {e}")
     for w in warnings:
@@ -160,7 +177,7 @@ def cmd_check(a):
         texts = [r["_text"] for r in ms["refs"]]
     findings, warnings, gaps = [], [], []
     for name, r, text in zip(names, ms["refs"], texts):
-        p = ss_check.pattern_side(card, fps, medium, r["fp"], text, r["info"].get("lang"))
+        p = ss_check.pattern_side(card, fps, medium, r["fp"], text, r["info"].get("lang"), a.own_palette)
         tag = f"{name}: " if len(names) > 1 else ""
         findings += [tag + x for x in p["findings"]]
         warnings += [tag + x for x in p["warnings"]]
@@ -175,6 +192,20 @@ def cmd_check(a):
     if a.out:
         save_json({"ok": ok, "style": style, "pattern": pattern}, a.out)
     return 0 if ok else 1
+
+
+def cmd_review(a):
+    import ss_card
+    if not os.path.isfile(a.pattern):
+        raise StyleError(f"not found: {a.pattern}")
+    with open(a.pattern, encoding="utf-8-sig") as f:
+        items = ss_card.pattern_items(f.read())
+    if not items:
+        raise StyleError(f"{a.pattern}: lists no signatures or set pieces; write them as bullets (references/firewall.md)")
+    missing = [f for f in a.files if not os.path.exists(f)]
+    if missing:
+        raise StyleError(f"not found: {', '.join(missing)}")
+    return write_text(ss_card.review_prompt(items, a.files), a.out)
 
 
 def cmd_sheet(a):
@@ -205,6 +236,7 @@ def main(argv=None):
     p.add_argument("-o", "--out", default="measures.json")
     p.add_argument("--medium", choices=MEDIA)
     p.add_argument("--max-seconds", type=float, default=600.0)
+    p.add_argument("--work", help="these files are parts of one work (screenshots of one site, chapters of one book)")
     p.set_defaults(fn=cmd_measure)
 
     p = sub.add_parser("card", help="build style.json and fingerprints.json")
@@ -217,6 +249,7 @@ def main(argv=None):
     p = sub.add_parser("lint", help="run the pattern firewall on a card")
     p.add_argument("card")
     p.add_argument("--fingerprints")
+    p.add_argument("--pattern", help="the checker's pattern.md: refuse habits that restate a device listed there")
     p.set_defaults(fn=cmd_lint)
 
     p = sub.add_parser("render", help="write the card as Markdown")
@@ -238,7 +271,15 @@ def main(argv=None):
     p.add_argument("--medium", choices=MEDIA)
     p.add_argument("--max-seconds", type=float, default=600.0)
     p.add_argument("-o", "--out", help="also write the report as JSON")
+    p.add_argument("--own-palette", action="store_true",
+                   help="the reference's colours are the person's own (their brand): report a shared palette as a warning")
     p.set_defaults(fn=cmd_check)
+
+    p = sub.add_parser("review", help="prompt for an independent imitation review against pattern.md")
+    p.add_argument("pattern", help="the checker's pattern.md")
+    p.add_argument("files", nargs="+", help="the new work: renders, screenshots, pages, text")
+    p.add_argument("-o", "--out", default="review.md")
+    p.set_defaults(fn=cmd_review)
 
     p = sub.add_parser("sheet", help="contact sheet of a video, one frame per shot")
     p.add_argument("video")

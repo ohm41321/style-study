@@ -11,7 +11,8 @@ fingerprints.json is needed):
             removed before the test; the specific sequence is pattern.
   material  near-duplicate frames or images (dHash close and grey layout correlated), shared runs of text, or reused
             stretches of audio.
-  palette   the same chromatic colour set (warning only: a palette can be a look or a brand).
+  palette   the same chromatic colour set: the reference's exact colours are its material (a finding unless
+            the person owns them).
   names     forbidden names from the card appearing in new text.
 """
 
@@ -156,7 +157,7 @@ def _de(a, b):
 
 
 def palette_match(ref_pal, new_pal):
-    """Warn when every chromatic colour of the new palette has a twin in the reference palette."""
+    """Flag when every chromatic colour of the new palette has a twin in the reference palette."""
     chrom = lambda pal: [c for c in pal if math.hypot(c["lab"][1], c["lab"][2]) >= 12 and c["share"] >= 0.04]
     rc, nc = chrom(ref_pal), chrom(new_pal)
     if len(rc) < 2 or len(nc) < 2:

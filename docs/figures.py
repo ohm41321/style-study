@@ -155,7 +155,7 @@ def pill(cx, cy, label, fill=INK, color=PAPER, w=None):
 
 def firewall():
     b = [text(64, 92, "The firewall", 44, INK, SERIF),
-         text(66, 130, "Two desks. Only the card and the brief reach the maker. Only the new work comes back.", 19, MUTED)]
+         text(66, 130, "Two desks. Only the brief reaches the maker. Only the new work comes back.", 19, MUTED)]
     L, R, top, bot = (64, 584), (696, 1216), 170, 748
     for (x0, x1), label, note in ((L, "the checker's desk", "Never handed to the maker."),
                                   (R, "the maker's desk", "Never sees the references.")):
@@ -174,28 +174,28 @@ def firewall():
              f'text-anchor="middle" transform="rotate(-90 640 460)">firewall</text>')
     # checker's desk
     b += tile(88, 230, 472, 74, "reference files", "a film, an essay, a track, a set of images")
-    b += tile(88, 326, 472, 74, "measures.json", "every unit, in order", num=1)
+    b += tile(88, 326, 472, 74, "measures.json  ·  style.json", "every unit in order; the card of ranges and principles", num=1)
     b += tile(88, 422, 472, 96, "fingerprints.json", ["sequences, frame hashes, layouts,", "audio and text fingerprints, palette"])
-    b += tile(88, 540, 472, 74, "pattern.md", "set pieces seen once: things not to do")
+    b += tile(88, 540, 472, 74, "pattern.md", "signatures, set pieces, order: for the review")
     b.append(arrow(140, 304, 140, 324))
     b.append(arrow(140, 400, 140, 420))
     # maker's desk
-    b += tile(720, 228, 472, 96, "style.json  ·  style.md", ["ranges, axes, habits, avoid, forbid; lint refuses",
-                                                            "times, positions, quotes, names, sequences"], num=2)
-    b += tile(720, 368, 472, 96, "brief.md", ["subject first, your own structure,", "one element the reference never had"], num=3)
-    b += tile(720, 508, 472, 74, "the new work", "made from the brief and the card alone", num=4)
+    b += tile(720, 228, 472, 96, "brief.md", ["three concepts, an invention ledger, principles",
+                                             "to carry in your own form, ranges, never"], num=2)
+    b += tile(720, 368, 472, 96, "a fresh maker", ["a clean room: it has seen nothing but", "the brief, and designs every form"], num=3)
+    b += tile(720, 508, 472, 74, "the new work", "its own forms, from its own subject", num=4)
     b.append(arrow(780, 324, 780, 366))
     b.append(arrow(780, 464, 780, 506))
     # crossings
     b.append(arrow(560, 363, 718, 276, GREEN, curve="610 363 660 276"))
-    b.append(pill(640, 290, "lint", GREEN))
+    b.append(pill(640, 290, "brief", GREEN))
     b.append(arrow(718, 560, 560, 662, RED, curve="660 560 610 662"))
-    b.append(pill(640, 622, "check", RED))
+    b.append(pill(640, 622, "check · review", RED))
     # verdict
     b += [f'<rect x="88" y="634" width="472" height="56" rx="12" fill="{INK}"/>',
-          text(112, 669, "STYLE PASS", 17, "#9FD3AE", MONO, weight="700"),
-          text(250, 669, "PATTERN PASS", 17, "#9FD3AE", MONO, weight="700"),
-          text(420, 669, "show it", 16, "#CFC7B8", SERIF, italic=True),
+          text(108, 668, "STYLE PASS", 15, "#9FD3AE", MONO, weight="700"),
+          text(226, 668, "PATTERN PASS", 15, "#9FD3AE", MONO, weight="700"),
+          text(364, 668, "REVIEW CLEAR", 15, "#9FD3AE", MONO, weight="700"),
           badge(534, 662, 6, "#3A3631")]
     b.append(badge(640, 588, 5, RED))
     return svg(1280, 790, b, "The firewall between the checker and the maker")
@@ -274,10 +274,12 @@ def card():
         y += 38
     # habits
     y += 26
-    b.append(text(ax0, y, "Habits, each seen 3 times or more", 22, INK, SERIF, italic=True))
+    b.append(text(ax0, y, "Principles, each seen 3 times or more", 22, INK, SERIF, italic=True))
     y += 36
     for tr in [c["traits"][i] for i in (0, 1, 3, 4)]:
         b.append(text(ax0, y, tr["dimension"], 14, GREEN, MONO))
+        if tr.get("core"):
+            b.append(text(ax0, y + 18, "core", 12, MUTED, MONO))
         for j, line in enumerate(wrap(tr["statement"], 52)):
             b.append(text(ax0 + 110, y + 22 * j, line, 15, INK))
         y += 22 * len(wrap(tr["statement"], 52)) + 14

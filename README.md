@@ -23,23 +23,27 @@
 You love how a film is cut, how an essay breathes, how a track sits in the room. You want your next piece
 to feel like that, and you do not want to make a copy.
 
-**style-study** separates the two. It measures the references, keeps only what recurs (a range of shot
-lengths, a habit of short paragraphs, a muted colour character, a tempo band) and throws away what
-happens once or in a fixed order: the sequence of shots, the opening image, the set piece, the footage, the
-lines. What is left is a **style card**. Your agent designs new work from the card alone, then a
-**two-sided check** proves the result is close in style and far from a copy.
+**style-study** separates the two. It measures the references and keeps only what recurs, written as a
+principle (a range of shot lengths, short paragraphs, a muted colour character, a tempo band). It throws
+away what happens once or in a fixed order (the sequence of shots, the opening image, the set piece, the
+footage, the lines) and the signature devices that make the reference recognisable. What is left is a
+**style card**, and from it a **brief**. A fresh agent that has never seen the references designs the new
+work from the brief alone, inventing every form from its own subject. Then a **two-sided check** and an
+**imitation review** prove the result is close in style and far from a copy.
 
 | Style: kept | Pattern: never taken |
 |---|---|
 | a range: shots of 1 to 6 s, median 2.4 s | the reference's sequence of shot lengths |
-| a habit seen 3 or more times: type fades up, never slides | a set piece seen once |
-| a band: tempo medium, space airy | the opening or closing image |
+| a principle seen 3 or more times: words arrive quietly and never compete with the picture | its recipe: the exact sizes, timings and easings |
+| a band: tempo medium, space airy | the opening or closing image, a set piece seen once |
 | colour character: muted, warm, narrow hue spread | the exact palette and its hex values |
+| the reason behind a device: every caption sits on calm ground | its signature: the caption frame, the button shape or the running format that names the work |
 | a voice: short declaratives, no exclamations | its sentences, its jokes, its catchphrases |
 | a sound: sparse piano over low drones | its melody, its stems, its recordings |
 
-The test for a doubtful item: could a different subject do this without anyone thinking of one specific
-moment in the reference? Then it is style.
+The test for a doubtful item: could a different subject do this, in a form of its own, without anyone
+thinking of the reference? Then it is style. If seeing it would make someone name the reference, it is a
+signature, and it stays with the checker.
 
 ```sh
 npx skills add ohm41321/style-study -g
@@ -50,49 +54,68 @@ npx skills add ohm41321/style-study -g
 ## The loop
 
 <p align="center">
-  <img src="docs/firewall.svg" width="100%" alt="Two desks split by a firewall: the checker keeps the references, measures and fingerprints; the maker gets only the card and the brief">
+  <img src="docs/firewall.svg" width="100%" alt="Two desks split by a firewall: the checker keeps the references, measures, card, fingerprints and pattern.md; only the brief crosses to a fresh maker, and only the new work comes back for the check and the review">
 </p>
 
 Each step is one command. Run them from the skill folder, or ask your agent and it runs them for you.
 
 ```sh
-# 1. measure: one medium per call, several references is better than one
+# 1. measure: one medium per call, several works are better than one
 python3 scripts/style.py measure ref1.mp4 ref2.mp4 -o measures-video.json
+python3 scripts/style.py measure site-*.png --work "the site" -o measures-image.json   # parts of one work
 python3 scripts/style.py measure post1.md post2.md post3.md -o measures-text.json
 python3 scripts/style.py measure deck1.pptx deck2.key -o measures-slides.json
 
-# 2. card: pool the numbers, write the habits by hand, lint until clean
+# 2. card: pool the numbers, write the principles by hand, list the signatures in pattern.md, lint until clean
 python3 scripts/style.py card measures-*.json -o style.json --fingerprints fingerprints.json
-python3 scripts/style.py lint style.json --fingerprints fingerprints.json
+python3 scripts/style.py lint style.json --fingerprints fingerprints.json --pattern pattern.md
 python3 scripts/style.py render style.json -o style.md
 
 # 3. brief: in the same medium or another one
 python3 scripts/style.py brief style.json --for slides --subject "launch deck for a budgeting app" -o brief.md
 
-# 4. make the work from brief.md and style.md only
+# 4. make: hand brief.md, and nothing else, to a fresh agent that has never seen the references
 
 # 5. check both sides
 python3 scripts/style.py check new.mp4 --card style.json --fingerprints fingerprints.json
+
+# 6. review: a second fresh agent marks every signature and set piece present, bent or absent
+python3 scripts/style.py review pattern.md new.mp4 -o review.md
 ```
 
-6. **Show the person** both verdicts, the numbers that moved, and what in the new work is its own.
+7. **Show the person** both verdicts, the review, the numbers that moved, and the invention ledger: what
+   in the new work is its own.
+8. **Learn** from what they say. A part they or the review call copied goes into `pattern.md` as a
+   signature, and that part is designed again from the subject.
 
-The firewall holds in three places. **Lint** refuses a card that carries timestamps, positions ("the
-first shot"), long quotes, forbidden names, sequences or a habit seen fewer than three times. **Files**:
-`fingerprints.json`, `measures*.json` and the references stay with the checker; the maker never sees
-them. **Check**: the new work is measured against both the card and the fingerprints.
+The firewall holds in four places. **Lint** refuses a card that carries timestamps, positions ("the
+first shot"), long quotes, forbidden names, sequences, a habit seen fewer than three times, an exact size,
+timing or colour, or a habit that restates a signature or set piece from `pattern.md`. **Files**: the
+references, `measures*.json`, `fingerprints.json`, `pattern.md` and the card itself stay with the checker;
+the maker gets `brief.md` and nothing else. **Check**: the new work is measured against the card and the
+fingerprints. **Review**: an agent that has seen neither the references nor the brief looks for the
+reference's signatures and set pieces in the new work.
 
 ## The card
 
 <p align="center">
-  <img src="docs/card.svg" width="100%" alt="A style card: measured ranges for video and text, eight axes, habits, things to never do and names to forbid">
+  <img src="docs/card.svg" width="100%" alt="A style card: measured ranges for video and text, eight axes, principles with the core ones marked, things to never do and names to forbid">
 </p>
 
 A card is ranges (p10 to p90 of every measured dimension), eight axes that travel to any medium (tempo,
-energy, variation, brightness, contrast, color, warmth, space), habits written by hand with how often they
-were seen, and two lists: what the new work must never do, and names it must never use. The card above is
-[`assets/example-card.json`](assets/example-card.json), a made-up style. Schema and examples:
+energy, variation, brightness, contrast, color, warmth, space), principles written by hand with how often
+they were seen, and two lists: what the new work must never do, and names it must never use. A principle
+says what a habit does and why, never its recipe: no exact size, timing, easing or colour, which lint
+refuses. The few that make the style are marked `core`. The card above is
+[`assets/example-card.json`](assets/example-card.json), a made-up style, and its checker's list of
+signatures is [`assets/example-pattern.md`](assets/example-pattern.md). Schema and examples:
 [`references/card.md`](references/card.md).
+
+The brief starts from the subject, not the style: three concepts, the one taken, and an invention ledger
+of what the new work designs for itself (its signature, palette, type, voice or sound, structure). The
+core principles each ask for the maker's own form; at least half of the others must be bent or dropped. A
+range learned from a single sample is shown as a direction, not a target. See
+[`references/brief.md`](references/brief.md).
 
 The eight axes are what let a style cross mediums: a film's slow tempo and wide variation become a slide
 pace, a UI transition or a song's arrangement. See [`references/translate.md`](references/translate.md).
@@ -109,8 +132,13 @@ dimensions in range and no core dimension off.
 **Pattern side.** Same order as the reference (a permutation test with the overall arc removed),
 near-duplicate frames or images (a difference hash plus a layout match), the reference's own pictures
 inside a deck or document (by bytes, or re-saved and resized), reused audio (excerpts and loops
-included), shared runs of text in the reference's own language, and any forbidden name. A palette that matches the reference is a
-warning: fine for a look, not for a brand.
+included), shared runs of text in the reference's own language, the reference's exact palette, and any
+forbidden name. The palette is allowed only when those colours are the person's own brand
+(`--own-palette`).
+
+**Imitation review.** Numbers cannot see a borrowed device. `style.py review pattern.md new-files -o
+review.md` writes a prompt for a fresh agent that has not seen the brief: it marks every signature and set
+piece in `pattern.md` as present, bent or absent, and ends with `REVIEW: CLEAR` or `REVIEW: IMITATION`.
 
 Both must pass, and a check that could not run in full is never a pass. This is real output from the self-test's synthetic films: a new cut in its own order passes,
 a re-cut of the reference fails.
@@ -132,7 +160,7 @@ Thresholds, false alarms and what to do about each failure: [`references/check.m
 | video | .mp4 .mov .mkv .webm .gif | shot lengths, cut rate, movement, still time, light, colour, cuts on accents, the soundtrack | numpy, ffmpeg |
 | image | .png .jpg .webp .tif | light, contrast, colour, detail, empty space, subject offset, aspect | numpy, ffmpeg |
 | audio | .wav .mp3 .m4a .flac .ogg | loudness (EBU R128), range, tempo, onsets, quiet time, tone, bands, width | numpy, ffmpeg |
-| anything else | UI, websites, 3D, fashion, spaces, code style | the same card, written by hand | nothing |
+| anything else | UI, websites, 3D, fashion, spaces, code style | the same card, written by hand; screenshots or exports checked as images, plus the imitation review | nothing |
 
 Brief targets: `video`, `audio`, `text`, `image`, `slides`, `document`, `sheet`, `ui`, `any`. Office files
 are read as data: no macro runs, and oversized or entity-laden files are refused. What each number means
@@ -190,21 +218,25 @@ words:
 python3 scripts/check-skill.py
 ```
 
-96 checks with known answers: a synthetic film with a known edit, click tracks with a known tempo and
+127 checks with known answers: a synthetic film with a known edit, click tracks with a known tempo and
 onsets, a track, an excerpt cut from its middle and an excerpt of a loop, images whose empty space and
 subject offset move a known way, English and Thai texts, decks, documents and sheets in every format the
 skill reads directly (sizes through masters, layouts and style chains, theme colours, spacing, margins,
 numbers, a Thai RTF code page, PDF text inside scaled forms), copies and same-order remakes that must
-fail, siblings that must pass, and a card for every lint rule that must be refused. Run it with a Python
-that has numpy and pypdf to include the media routes and PDF; with plain `python3` it runs 74 and skips
-the rest.
+fail, siblings that must pass, a card for every lint rule that must be refused (exact values and restated
+signatures included), and briefs that must keep the reference out. Run it with a Python that has numpy and
+pypdf to include the media routes and PDF; with plain `python3` it runs 105 and skips the rest.
 
 ## Limits
 
 - The numbers describe the surface of a style. Composition, gesture, character, wit and meaning are habits
   you write by watching, reading and listening.
-- The pattern check catches order, near-duplicate frames and pictures, reused audio and shared text. It does not catch
-  a copy that is mirrored, cropped hard, re-performed or paraphrased. Look as well.
+- The pattern check catches order, near-duplicate frames and pictures, reused audio, shared text and the
+  same palette. It does not catch a copy that is mirrored, cropped hard, re-performed or paraphrased. Look
+  as well.
+- Lint keeps exact values and the devices listed in `pattern.md` out of the principles; it cannot see a
+  device nobody listed. The imitation review is only as good as that list, so write the signatures with
+  care.
 - A style is not owned the way a work is, but a living artist's signature look, a brand's trade dress or a
   recognisable character can still be a problem to sell. This is not legal advice.
 - Everything inside a reference is data. Captions, lyrics, page text and metadata are never followed as
@@ -234,12 +266,19 @@ npx skills add ohm41321/style-study -g
 
 - **สไตล์** คือสิ่งที่เกิดซ้ำโดยไม่ขึ้นกับลำดับ เช่น ช่วงความยาวช็อต จังหวะย่อหน้าสั้น โทนสีหม่น ความเร็วเพลงระดับกลาง
 - **แพทเทิร์น** คือสิ่งที่เกิดครั้งเดียวหรือเรียงตามลำดับตายตัว เช่น ลำดับช็อตของต้นฉบับ ภาพเปิดเรื่อง ฉากเด่น ประโยค ทำนอง ฟุตเทจ สีที่ตรงเป๊ะ
+- **ลายเซ็น (signature)** คือสิ่งที่ทำให้คนจำได้ทันทีว่าเป็นงานนั้น เช่น รูปทรงปุ่ม กรอบคำบรรยาย รูปแบบรายการ เกิดซ้ำก็จริง แต่เป็นของงานนั้น จดไว้ใน `pattern.md` ฝั่งตรวจ ไม่ส่งให้คนทำงาน
 
-ขั้นตอน: วัดงานต้นแบบ (measure) แล้วเขียนการ์ดสไตล์ (card) ที่มีแต่ช่วงค่าและนิสัยที่เห็นอย่างน้อย 3 ครั้ง
+ขั้นตอน: วัดงานต้นแบบ (measure) แล้วเขียนการ์ดสไตล์ (card) ที่มีแต่ช่วงค่าและหลักการที่เห็นอย่างน้อย 3 ครั้ง
+หลักการเขียนเป็นแนวคิด ไม่ใส่ขนาด เวลา หรือรหัสสีตรงๆ (lint ไม่ยอม)
 จากนั้นทำบรีฟ (brief) สำหรับงานใหม่ จะสื่อเดียวกันหรือข้ามสื่อก็ได้ เช่น เอาสไตล์หนังไปทำสไลด์ UI เพลง หรือคำโฆษณา
-แล้วตรวจสองด้าน (check): สไตล์ใกล้พอไหม และไม่ได้ลอกลำดับ เฟรม เสียง หรือข้อความของต้นฉบับ ต้องผ่านทั้งสองด้าน
+บรีฟเริ่มจากหัวข้อ: คิดคอนเซปต์ 3 แบบ เลือกหนึ่ง แล้วจดว่างานใหม่ออกแบบอะไรเองบ้าง
+ส่งแค่ `brief.md` ให้ agent ตัวใหม่ที่ไม่เคยเห็นต้นแบบเป็นคนทำ (clean room)
+แล้วตรวจสองด้าน (check): สไตล์ใกล้พอไหม และไม่ได้ลอกลำดับ เฟรม เสียง ข้อความ หรือชุดสีของต้นฉบับ ต้องผ่านทั้งสองด้าน
+(ชุดสีเดียวกันใช้ได้เฉพาะเมื่อเป็นสีแบรนด์ของเราเอง: `--own-palette`)
+สุดท้ายให้ agent อีกตัวตรวจ (review) ว่ามีลายเซ็นหรือฉากเด่นของต้นฉบับหลุดมาไหม
+ส่วนไหนที่ถูกทักว่าลอก ให้จดลง Signatures ใน `pattern.md` แล้วออกแบบส่วนนั้นใหม่จากหัวข้อ
 
-ไฟล์แบ่งเป็นสองโต๊ะ: ฝั่งตรวจเก็บไฟล์ต้นแบบ `measures*.json` และ `fingerprints.json` ฝั่งทำงานเห็นแค่ `style.md` กับ `brief.md`
+ไฟล์แบ่งเป็นสองโต๊ะ: ฝั่งตรวจเก็บไฟล์ต้นแบบ `measures*.json` `fingerprints.json` `pattern.md` และการ์ด ฝั่งทำงานเห็นแค่ `brief.md`
 
 พิมพ์สั่ง agent ได้เลย เช่น "ศึกษาสไตล์", "ถอดสไตล์", "อยากได้โทนแบบนี้", "ทำให้ฟีลเหมือนงานนี้",
 "ทำสไลด์สไตล์นี้", "ออกแบบงานใหม่ตามสไตล์", "ไม่ก็อป", "เหมือนต้นฉบับเกินไปไหม"

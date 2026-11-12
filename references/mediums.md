@@ -183,17 +183,25 @@ UI, websites, 3D scenes, fashion, interiors, product photography sets, code styl
 is no measuring route, and the card still works.
 
 1. Study at least three references, or three distinct parts of one large reference (three screens of an
-   app, three rooms, three pieces of a collection).
+   app, three rooms, three pieces of a collection), as their audience meets them: look at the screens, not
+   at the site's CSS, design tokens or source. Parts of one reference are one work: say so with
+   `measure --work NAME` when you measure its screenshots, and lint will remind you that one work cannot
+   tell its style from its signature.
 2. Write the card by hand: `schema`, `name`, `references` (bare names), `traits`, `avoid`, `forbid`, and
    `axes` with bands you judge yourself (`tempo`, `energy`, `variation`, `brightness`, `contrast`,
    `color`, `warmth`, `space`; band names in [translate.md](translate.md)). Leave `measured` as `{}`.
-   Write each trait with a number where the medium has one: spacing in px, type sizes in a ratio, corner
-   radius, transition length in ms, line height.
-3. Lint it (`style.py lint style.json`). The firewall applies unchanged: no positions ("the second
-   screen"), no copied copy, no names, no exact palette.
-4. Brief it (`style.py brief style.json --for ui`) and make the work.
-5. Check by review: put the new work and the brief side by side and go through sections 3 to 5 of the
-   brief. Then the pattern questions by eye: does any screen, slide or piece follow the reference's order?
-   Reuse its layout grid exactly, its illustrations, its copy, its icons, its colour values? If the new
-   work exports to a measured medium (a UI recording to video, screens to images, a page to PDF, copy to
-   text), measure that export and run `style.py check` on it too.
+   Write each trait as a principle, in words: "small type does most of the work", "space is spent between
+   zones, not inside them", "motion answers a change of state". Never the reference's values (its spacing
+   in px, its type scale, its radius, its timings, its curves): those are its design system, and a maker
+   who gets them rebuilds it. Lint refuses them.
+3. Write `pattern.md` for the checker: the reference's signatures (its button shapes, its header, its card
+   treatment, its grid, its page structure, anything that says "this is that product") and its set
+   pieces. Lint the card against it (`style.py lint style.json --pattern pattern.md`). The firewall applies
+   unchanged: no positions ("the second screen"), no copied copy, no names, no exact palette.
+4. Brief it (`style.py brief style.json --for ui`), fill the concept and the invention ledger, and hand
+   only the brief to a fresh maker.
+5. Check by review: go through sections 3 to 5 of the brief. Screenshot the new work at its main sizes; if
+   the card has image measurements, run `style.py check` on the screenshots (a layout that copies the
+   reference's composition is caught there). Then the imitation review: `style.py review pattern.md
+   screens/*.png -o review.md`, given to a fresh reviewer with the screenshots. If the new work exports to
+   another measured medium (a UI recording to video, a page to PDF, copy to text), check that export too.

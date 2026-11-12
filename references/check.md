@@ -51,7 +51,7 @@ Run against every reference in `fingerprints.json`.
 | text | a shared run of 12 English words or 40 Thai characters, or 5% of the new text's 8-word (15-character) shingles found in the reference; run in the reference's language, so Thai pasted into English text is still found. Between any two of text, documents, slides and sheets; in a sheet, only runs inside one cell count, so a shared header row (January to December) is not a copy | copied sentences, slide copy, notes in cells |
 | pictures | a picture inside a deck, document or sheet that is one of the reference's own files byte for byte; or, with numpy and ffmpeg, one whose dHash and grey layout match a reference picture, frame or image as above. Without numpy a warning says pictures were compared by their bytes only | reused photos, icons and illustrations, re-saved or resized |
 | names | a `forbid` name in new text | the reference's brand or characters |
-| palette (warning) | every chromatic colour of the new work within delta E 6 of one of the reference's, and the reference's within 6 of the new work's on average; images and video against images and video, a deck against a deck, a document against a document | same colour set: fine for a look, not for a brand |
+| palette | every chromatic colour of the new work within delta E 6 of one of the reference's, and the reference's within 6 of the new work's on average; images and video against images and video, a deck against a deck, a document against a document. With `--own-palette` (the colours are the person's own brand) it is a warning | the reference's exact colours are its material |
 
 **How the order test works.** Each unit (shot, paragraph, second, image, slide, block, sheet) carries a
 few features (length, light, contrast, movement, colour; or length, sentence count, questions, list,
@@ -65,6 +65,23 @@ either side: no verdict (a warning says so). Between two written media (Markdown
 against a deck) the test compares the paragraphs the text route reads on both sides, so saving a
 same-order rewrite in another format does not get it past.
 
+## Imitation review
+
+The check sees order and material. It cannot see a signature device drawn anew: the same button shape in
+other colours, the same caption treatment on new footage, the same page structure with new content. A
+reviewer can.
+
+```sh
+python3 scripts/style.py review pattern.md NEW... -o review.md
+```
+
+`review.md` is a prompt. Give it, with the new files, to a fresh agent or subagent that has not seen the
+brief and is not the maker. It marks every item in `pattern.md` PRESENT (the device, or something a viewer
+would take for it), BENT (a related idea in the work's own form) or ABSENT, names anything else that
+recalls the reference, and ends with `REVIEW: CLEAR` or `REVIEW: IMITATION`. The work is done only when
+the review is clear and both sides of the check pass. Without a Signatures section in `pattern.md` the
+review has nothing to look for; lint `--pattern` refuses such a file.
+
 ## When it fails
 
 - **Order.** Rebuild the structure from the subject: list the parts the subject needs, in the order it
@@ -74,6 +91,11 @@ same-order rewrite in another format does not get it past.
 - **Audio.** Replace the matched stretch with new music or sound; a remix of the reference's stems counts
   as reuse.
 - **Text.** Rewrite the flagged run in your own words; quote at most a few words, and only with credit.
+- **Palette.** Build a palette from the subject (a material, a place, an object in it), with the card's
+  character. `--own-palette` is for colours the person owns, such as their own brand; never for convenience.
+- **Imitation.** For each item the reviewer marked present, go back to the brief's concept and design that
+  part again from the subject. Recolouring, resizing or moving the device is not enough. If the person
+  points at a part the list missed, add it to `pattern.md` under Signatures first.
 - **Style.** Work on the `OFF` rows, starting with the core ones.
 
 ## False alarms and blind spots
@@ -83,6 +105,9 @@ same-order rewrite in another format does not get it past.
   every one of its habits look like order. Add references. Do not raise the thresholds.
 - Very simple graphics (one shape on a flat field) can match a reference's layout by chance; look at the
   flagged frame before rebuilding.
+- Two decks or documents that both keep a stock template's colours (a default Office or Keynote theme)
+  share a palette that belongs to neither. Build a palette from the subject anyway: a stock palette is no
+  one's design, the new work's included.
 - The check does not see mirrored copies, hard crops, re-performances, paraphrase, or a melody played on
   another instrument. It does not judge quality. Look, listen and read as well.
 

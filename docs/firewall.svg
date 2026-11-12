@@ -2,7 +2,7 @@
 <title>The firewall between the checker and the maker</title>
 <rect x="1" y="1" width="1278" height="788" rx="22" fill="#F4F0E8" stroke="#DDD5C6" stroke-width="2"/>
 <text x="64.0" y="92.0" font-family="Georgia, 'Times New Roman', serif" font-size="44" fill="#1F1D1A">The firewall</text>
-<text x="66.0" y="130.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="19" fill="#6E675D">Two desks. Only the card and the brief reach the maker. Only the new work comes back.</text>
+<text x="66.0" y="130.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="19" fill="#6E675D">Two desks. Only the brief reaches the maker. Only the new work comes back.</text>
 <rect x="64" y="170" width="520" height="578" rx="18" fill="#ECE6DA"/>
 <text x="88.0" y="208.0" font-family="Georgia, 'Times New Roman', serif" font-size="22" fill="#1F1D1A" font-style="italic">the checker's desk</text>
 <text x="88.0" y="726.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" fill="#6E675D" font-style="italic">Never handed to the maker.</text>
@@ -18,8 +18,8 @@
 <text x="110.0" y="264.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="19" fill="#1F1D1A">reference files</text>
 <text x="110.0" y="290.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#6E675D">a film, an essay, a track, a set of images</text>
 <rect x="88" y="326" width="472" height="74" rx="12" fill="#FBF8F2" stroke="#DDD5C6" stroke-width="1.5"/>
-<text x="110.0" y="360.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="19" fill="#1F1D1A">measures.json</text>
-<text x="110.0" y="386.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#6E675D">every unit, in order</text>
+<text x="110.0" y="360.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="19" fill="#1F1D1A">measures.json  ·  style.json</text>
+<text x="110.0" y="386.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#6E675D">every unit in order; the card of ranges and principles</text>
 <circle cx="534" cy="352" r="14" fill="#1F1D1A"/><text x="534.0" y="357.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" fill="#F4F0E8" font-weight="700" text-anchor="middle">1</text>
 <rect x="88" y="422" width="472" height="96" rx="12" fill="#FBF8F2" stroke="#DDD5C6" stroke-width="1.5"/>
 <text x="110.0" y="456.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="19" fill="#1F1D1A">fingerprints.json</text>
@@ -27,33 +27,33 @@
 <text x="110.0" y="503.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#6E675D">audio and text fingerprints, palette</text>
 <rect x="88" y="540" width="472" height="74" rx="12" fill="#FBF8F2" stroke="#DDD5C6" stroke-width="1.5"/>
 <text x="110.0" y="574.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="19" fill="#1F1D1A">pattern.md</text>
-<text x="110.0" y="600.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#6E675D">set pieces seen once: things not to do</text>
+<text x="110.0" y="600.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#6E675D">signatures, set pieces, order: for the review</text>
 <path d="M140 304 L140 324" fill="none" stroke="#1F1D1A" stroke-width="2.5"/><path d="M134.8 313.2 L140 324 L145.2 313.2" fill="none" stroke="#1F1D1A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
 <path d="M140 400 L140 420" fill="none" stroke="#1F1D1A" stroke-width="2.5"/><path d="M134.8 409.2 L140 420 L145.2 409.2" fill="none" stroke="#1F1D1A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
 <rect x="720" y="228" width="472" height="96" rx="12" fill="#FBF8F2" stroke="#DDD5C6" stroke-width="1.5"/>
-<text x="742.0" y="262.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="19" fill="#1F1D1A">style.json  ·  style.md</text>
-<text x="742.0" y="288.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#6E675D">ranges, axes, habits, avoid, forbid; lint refuses</text>
-<text x="742.0" y="309.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#6E675D">times, positions, quotes, names, sequences</text>
+<text x="742.0" y="262.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="19" fill="#1F1D1A">brief.md</text>
+<text x="742.0" y="288.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#6E675D">three concepts, an invention ledger, principles</text>
+<text x="742.0" y="309.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#6E675D">to carry in your own form, ranges, never</text>
 <circle cx="1166" cy="254" r="14" fill="#1F1D1A"/><text x="1166.0" y="259.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" fill="#F4F0E8" font-weight="700" text-anchor="middle">2</text>
 <rect x="720" y="368" width="472" height="96" rx="12" fill="#FBF8F2" stroke="#DDD5C6" stroke-width="1.5"/>
-<text x="742.0" y="402.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="19" fill="#1F1D1A">brief.md</text>
-<text x="742.0" y="428.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#6E675D">subject first, your own structure,</text>
-<text x="742.0" y="449.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#6E675D">one element the reference never had</text>
+<text x="742.0" y="402.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="19" fill="#1F1D1A">a fresh maker</text>
+<text x="742.0" y="428.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#6E675D">a clean room: it has seen nothing but</text>
+<text x="742.0" y="449.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#6E675D">the brief, and designs every form</text>
 <circle cx="1166" cy="394" r="14" fill="#1F1D1A"/><text x="1166.0" y="399.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" fill="#F4F0E8" font-weight="700" text-anchor="middle">3</text>
 <rect x="720" y="508" width="472" height="74" rx="12" fill="#FBF8F2" stroke="#DDD5C6" stroke-width="1.5"/>
 <text x="742.0" y="542.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="19" fill="#1F1D1A">the new work</text>
-<text x="742.0" y="568.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#6E675D">made from the brief and the card alone</text>
+<text x="742.0" y="568.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="15" fill="#6E675D">its own forms, from its own subject</text>
 <circle cx="1166" cy="534" r="14" fill="#1F1D1A"/><text x="1166.0" y="539.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" fill="#F4F0E8" font-weight="700" text-anchor="middle">4</text>
 <path d="M780 324 L780 366" fill="none" stroke="#1F1D1A" stroke-width="2.5"/><path d="M774.8 355.2 L780 366 L785.2 355.2" fill="none" stroke="#1F1D1A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
 <path d="M780 464 L780 506" fill="none" stroke="#1F1D1A" stroke-width="2.5"/><path d="M774.8 495.2 L780 506 L785.2 495.2" fill="none" stroke="#1F1D1A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
 <path d="M560 363 C610 363 660 276 718 276" fill="none" stroke="#2F6B4F" stroke-width="2.5"/><path d="M707.2 281.2 L718 276 L707.2 270.8" fill="none" stroke="#2F6B4F" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-<rect x="612.8" y="275" width="54.4" height="30" rx="15" fill="#2F6B4F"/><text x="640.0" y="295.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="15" fill="#F4F0E8" text-anchor="middle">lint</text>
+<rect x="608.0" y="275" width="64.0" height="30" rx="15" fill="#2F6B4F"/><text x="640.0" y="295.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="15" fill="#F4F0E8" text-anchor="middle">brief</text>
 <path d="M718 560 C660 560 610 662 560 662" fill="none" stroke="#D9482B" stroke-width="2.5"/><path d="M570.8 656.8 L560 662 L570.8 667.2" fill="none" stroke="#D9482B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-<rect x="608.0" y="607" width="64.0" height="30" rx="15" fill="#D9482B"/><text x="640.0" y="627.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="15" fill="#F4F0E8" text-anchor="middle">check</text>
+<rect x="564.8" y="607" width="150.4" height="30" rx="15" fill="#D9482B"/><text x="640.0" y="627.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="15" fill="#F4F0E8" text-anchor="middle">check · review</text>
 <rect x="88" y="634" width="472" height="56" rx="12" fill="#1F1D1A"/>
-<text x="112.0" y="669.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="17" fill="#9FD3AE" font-weight="700">STYLE PASS</text>
-<text x="250.0" y="669.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="17" fill="#9FD3AE" font-weight="700">PATTERN PASS</text>
-<text x="420.0" y="669.0" font-family="Georgia, 'Times New Roman', serif" font-size="16" fill="#CFC7B8" font-style="italic">show it</text>
+<text x="108.0" y="668.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="15" fill="#9FD3AE" font-weight="700">STYLE PASS</text>
+<text x="226.0" y="668.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="15" fill="#9FD3AE" font-weight="700">PATTERN PASS</text>
+<text x="364.0" y="668.0" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="15" fill="#9FD3AE" font-weight="700">REVIEW CLEAR</text>
 <circle cx="534" cy="662" r="14" fill="#3A3631"/><text x="534.0" y="667.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" fill="#F4F0E8" font-weight="700" text-anchor="middle">6</text>
 <circle cx="640" cy="588" r="14" fill="#D9482B"/><text x="640.0" y="593.0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" fill="#F4F0E8" font-weight="700" text-anchor="middle">5</text>
 </svg>
